@@ -18,7 +18,7 @@ class GripperAction(BaseModel):
     reason: str
 
 class LanguageModels:
-    def __init__(self, loc_options, arm_options):
+    def __init__(self, loc_options=None, arm_options=None):
 
         self.logs=""
         self.loc_options = loc_options
@@ -56,8 +56,8 @@ class LanguageModels:
             self.cap.release()
 
 
-    def get_vlm_feedback_gripper(self, task):
-        if not task=="pickup" or task=="dropoff":
+    def get_vlm_feedback(self, task):
+        if not task=="pickup" or task=="dropoff" or task=="caption":
             return print(f"Task {task} not in pickup/dropoff for Gripper")
         # get vlm response
         encoded_image = self.get_encoded_image()  # Convert OpenCV image to base64
@@ -92,6 +92,12 @@ class LanguageModels:
             1. **Respond strictly with either "1" (if it should open) or "0" (if it should not open).** and give reason
             2. The gripper should **only open** if a person is securely holding the object.
             3. If the object is not being held by a person, the gripper **should not open** to prevent it from falling.
+            """
+        elif task == "caption":
+            system_prompt = """
+            You are assisting a robotic Mobile Manipulator.
+            From the image provided to you, describe what do you find.
+            This description will be used in learning about the environment and thus responding better to user queries.
             """
 
         response = client.chat.completions.create(

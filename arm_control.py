@@ -9,6 +9,6 @@ mygello = GELLOcontroller("doodle", torque_start=True)
 
 
 mygello.rest()
-mygello.pickup()
+# mygello.pickup()
 # mygello.dropoff()
-# print(mygello.read_encoder_values())
+print(mygello.read_encoder_values())
