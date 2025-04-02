@@ -58,7 +58,8 @@ class LanguageModels:
 
     def get_vlm_feedback(self, task):
         if not task=="pickup" or task=="dropoff" or task=="caption":
-            return print(f"Task {task} not in pickup/dropoff for Gripper")
+            # print(f"Task {task} not in pickup/dropoff for Gripper")
+            return
         # get vlm response
         encoded_image = self.get_encoded_image()  # Convert OpenCV image to base64
         
