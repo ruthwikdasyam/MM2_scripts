@@ -99,14 +99,15 @@ class MemoryNode:
             "task_status": self.task_status
         }
         # Return the log as a JSON string
-        return json.dumps(log, indent=4)
+        return log
 
 
     def save_logs(self, log_entry):
         log_file = "robot_logs.jsonl"  # JSONL (JSON Lines) format for continuous logging
         try:
-            with open(log_file, "a") as f:
-                f.write(log_entry + "\n")  # Newline to separate logs
+            json_line = json.dumps(log) 
+            with open(log_file, "a") as file:
+                file.write(json_line + "\n")
         except KeyboardInterrupt:
             print("Logging stopped by user.")
         except Exception as e:
@@ -120,7 +121,7 @@ if __name__ == '__main__':
         while True:
             print("logging...")
             log = mem_node.get_log()
-            print(log)
+            print(json.dumps(log, indent=4))
             mem_node.save_logs(log)
             time.sleep(2)
             # break

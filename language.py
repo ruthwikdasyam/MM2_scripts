@@ -117,8 +117,6 @@ class LanguageModels:
                 }
             ],
         )
-
-
         # Extract the response
         result = response.choices[0].message.content
         # print(f"Model Response for {task}: {result}")
@@ -221,6 +219,11 @@ class LanguageModels:
         return sequence_response
 
     
+    # def retreval():
+
+        
+
+    #     return keywords
 
 if __name__ == "__main__":
     pass
