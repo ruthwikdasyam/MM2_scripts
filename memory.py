@@ -15,7 +15,7 @@ class MemoryNode:
         rospy.init_node('memory_node', anonymous=True)
 
         rospy.Subscriber('/subtask', String, self.subtask_callback)
-        rospy.Subscriber('/arm_pos', Int32MultiArray, self.armpos_callback)
+        rospy.Subscriber('/armpos', Int32MultiArray, self.armpos_callback)
         rospy.Subscriber('/user_query', String, self.user_query_callback)
         rospy.Subscriber('/response_sequence', String, self.response_sequence_callback)
         rospy.Subscriber('/response_reason', String, self.response_reason_callback)
@@ -23,12 +23,12 @@ class MemoryNode:
         rospy.Subscriber('/odom', Odometry, self.odom_callback)
 
         self.subtask_name = "--"
-        self.arm_pos = ['--', '--', '--', '--', '--', '--', '--']
+        self.arm_pos = str(['--', '--', '--', '--', '--', '--', '--'])
         self.user_query = "--"
         self.response_sequence = "--"
         self.response_reason = "--"
         self.task_status = "--"
-        self.odom_entry = ['--', '--', '--', '--', '--', '--', '--']
+        self.odom_entry = " "
         self.loc_options = ["ruthwik", "zahir", "amisha", "kasra", "home"]
         self.arm_options = ["pickup", "dropoff"]
 
@@ -65,7 +65,7 @@ class MemoryNode:
         oz = msg.pose.pose.orientation.z
         ow = msg.pose.pose.orientation.w
         # Store all in an array
-        self.odom_entry = [x, y, z, ox, oy, oz, ow]
+        self.odom_entry = str([x, y, z, ox, oy, oz, ow])
 
 
     def get_log(self):
@@ -89,10 +89,10 @@ class MemoryNode:
             "reasoning": self.response_reason
         }
         # Camera Observation
-        try:
-            log["camera_observation"] = self.llm.get_vlm_feedback(task="caption")
-        except Exception as e:
-            log["camera_observation"] = f"Error: Could not capture image. ({str(e)})"
+        # try:
+        log["camera_observation"] = self.llm.get_vlm_feedback(task="caption")
+        # except Exception as e:
+        #     log["camera_observation"] = f"Error: Could not capture image. ({str(e)})"
         # Task Progress
         log["task_progress"] = {
             "task_name": self.subtask_name,
@@ -102,15 +102,27 @@ class MemoryNode:
         return json.dumps(log, indent=4)
 
 
+    def save_logs(self, log_entry):
+        log_file = "robot_logs.jsonl"  # JSONL (JSON Lines) format for continuous logging
+        try:
+            with open(log_file, "a") as f:
+                f.write(log_entry + "\n")  # Newline to separate logs
+        except KeyboardInterrupt:
+            print("Logging stopped by user.")
+        except Exception as e:
+            print(f"Error: {e}")
+
 
 if __name__ == '__main__':
     try:
         mem_node = MemoryNode()
 
         while True:
+            print("logging...")
             log = mem_node.get_log()
             print(log)
-            # time.sleep(1)
-            break
+            mem_node.save_logs(log)
+            time.sleep(2)
+            # break
     except rospy.ROSInterruptException:
         pass

@@ -33,12 +33,12 @@ class RandomGoalSetter:
         self.goal_pub = rospy.Publisher('/move_base_simple/goal', PoseStamped, queue_size=10) # publishes goal point
         self.cancel_pub = rospy.Publisher('/move_base/cancel', GoalID, queue_size=10)         # cancels all goals- WAIT feature
         # memory
-        self.subtask_name = rospy.Publisher('/subtask', String)                # publishes current task name
-        self.arm_pos = rospy.Publisher('/armpos', Int32MultiArray)             # publishes current pos of manip
-        self.user_query = rospy.Publisher('/user_query', String)
-        self.response_sequence = rospy.Publisher('/response_sequence', String)
-        self.response_reason = rospy.Publisher('/response_reason', String)
-        self.task_status = rospy.Publisher('/task_status', String)
+        self.subtask_name = rospy.Publisher('/subtask', String, queue_size=10)                # publishes current task name
+        self.arm_pos = rospy.Publisher('/armpos', Int32MultiArray, queue_size=10)             # publishes current pos of manip
+        self.user_query = rospy.Publisher('/user_query', String, queue_size=10)
+        self.response_sequence = rospy.Publisher('/response_sequence', String, queue_size=10)
+        self.response_reason = rospy.Publisher('/response_reason', String, queue_size=10)
+        self.task_status = rospy.Publisher('/task_status', String, queue_size=10)
         
         # subscribers
         rospy.Subscriber('/move_base/status', GoalStatusArray, self.status_callback)           # reading robot status
@@ -86,8 +86,11 @@ class RandomGoalSetter:
 
 
 
-    def publish_goal(self, response):
-
+    def publish_goal(self):
+        response = self.llm.get_response()
+        self.user_query.publish(self.llm.user_query)                                  # publsihing user query
+        self.response_sequence.publish(str(response.choices[0].message.parsed.sequence))   # publishing task sequence
+        self.response_reason.publish(str(response.choices[0].message.parsed.reason))       # publishing reason from llm
 
         while True:
             # checking if:
@@ -103,8 +106,8 @@ class RandomGoalSetter:
                 print(f"logs: \n {self.llm.logs}")
                 response = self.llm.get_response()
                 self.user_query.publish(self.llm.user_query)                                  # publsihing user query
-                self.response_sequence.publish(response.choices[0].message.parsed.sequence)   # publishing task sequence
-                self.response_reason.publish(response.choices[0].message.parsed.reason)       # publishing reason from llm
+                self.response_sequence.publish(str(response.choices[0].message.parsed.sequence))   # publishing task sequence
+                self.response_reason.publish(str(response.choices[0].message.parsed.reason))       # publishing reason from llm
                 self.breaking = False
 
             else: 
@@ -188,18 +191,20 @@ if __name__ == "__main__":
     try:
         goal_setter = RandomGoalSetter()
         goal_setter.llm.connection_check()
-        # response = goal_setter.llm.get_response()
-        # goal_setter.publish_goal(response)
-        for i in range(4):
+        goal_setter.publish_goal()
+        # for i in range(4):
         # while True:
             # print(goal_setter.llm.get_vlm_feedback_gripper("pickup"))
-            time.sleep(1)
-            goal_setter.subtask_name.publish("Z")
+            # time.sleep(1)
+            # goal_setter.subtask_name.publish("Z")
 
 
-        while True:
-            goal = str(input("Enter str"))
-            goal_setter.subtask_name.publish(goal)
+        # while True:
+        #     goal = str(input("Enter str"))
+        #     goal_setter.subtask_name.publish(goal)
+        #     goal_setter.user_query.publish(goal)
+        #     goal_setter.response_sequence.publish(goal)
+        #     goal_setter.response_reason.publish(goal)
 
 
         # goal_setter.check_code()
