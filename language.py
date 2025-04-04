@@ -6,6 +6,7 @@ import cv2
 import base64
 import io
 from PIL import Image
+import json
 
 client = OpenAI()
 
@@ -219,11 +220,73 @@ class LanguageModels:
         return sequence_response
 
     
-    # def retreval():
+    def generate_keywords(self, user_query):
 
-        
+        # Using the new API method for text generation
+        response = client.chat.completions.create(
+            model="gpt-4o",  # Use the appropriate model name (e.g., "gpt-4")
+            messages=[{
+                "role": "user",
+                "content":  f"Extract the most relevant keywords from the following user query. "
+                            f"These keywords will be used to filter robot experiences, which include image captions, tasks, task statuses, "
+                            f"robot position, manipulator position, and timestamps. The goal is to find experiences that match the intent "
+                            f"of the user query. Focus on key objects, actions, locations, and task-related terms.\n\n"
+                            f"User query: '{user_query}'\n\n"
+                            f"Provide only a comma-separated list of keywords, without any explanations."
+            }],
+            # max_tokens=50,
+            temperature=0.5
+        )
+        # Extract the keywords from the response
+        keywords = response.choices[0].message.content
+        return keywords
 
-    #     return keywords
+
+
+    def filter_experiences(self, input_file, output_file, keywords):
+        """
+        Filters robot experiences based on relevant keywords and saves them to a new JSONL file.
+
+        :param input_file: Path to the input .jsonl file containing all experiences.
+        :param output_file: Path to the output .jsonl file to save filtered experiences.
+        :param keywords: A list of keywords to filter experiences.
+        """
+        filtered_experiences = []
+
+        with open(input_file, "r") as infile:
+            for line in infile: 
+                experience = json.loads(line)
+                
+                # Extract relevant fields for keyword matching
+                text_fields = [
+                    experience["camera_observation"],
+                    experience["llm"]["user_query"],
+                    experience["task_progress"]["task_name"],
+                    experience["task_progress"]["task_status"]
+                ]
+
+                # Check if any keyword appears in the text fields
+                if any(keyword.lower() in " ".join(text_fields).lower() for keyword in keywords):
+                    filtered_experiences.append(experience)
+
+        # Save the filtered experiences to a new JSONL file
+        with open(output_file, "w") as outfile:
+            for exp in filtered_experiences:
+                json.dump(exp, outfile)
+                outfile.write("\n")  # Ensure each experience is on a new line
+
+        print(f"Filtered {len(filtered_experiences)} experiences and saved to {output_file}")
+
 
 if __name__ == "__main__":
-    pass
+
+    llm = LanguageModels()
+    llm.connection_check()
+    # Example usage
+    user_query = "Can you pick up the red ball from the table?"
+    keywords = llm.generate_keywords(user_query)
+    print(f"Extracted Keywords: {keywords}")
+    llm.filter_experiences("robot_logs.jsonl", "filtered_experiences.jsonl", keywords.split(","))
+    
+
+    
