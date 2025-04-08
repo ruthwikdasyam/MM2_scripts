@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 
-import rospy
-from std_msgs.msg import String, Int32MultiArray
-from nav_msgs.msg import Odometry
+# import rospy
+# from std_msgs.msg import String, Int32MultiArray
+# from nav_msgs.msg import Odometry
 import time
 import json
 from datetime import datetime
@@ -12,15 +12,15 @@ class MemoryNode:
 
     def __init__(self):
         # Initialize the ROS node
-        rospy.init_node('memory_node', anonymous=True)
+        # rospy.init_node('memory_node', anonymous=True)
 
-        rospy.Subscriber('/subtask', String, self.subtask_callback)
-        rospy.Subscriber('/armpos', Int32MultiArray, self.armpos_callback)
-        rospy.Subscriber('/user_query', String, self.user_query_callback)
-        rospy.Subscriber('/response_sequence', String, self.response_sequence_callback)
-        rospy.Subscriber('/response_reason', String, self.response_reason_callback)
-        rospy.Subscriber('/task_status', String, self.task_status_callback)
-        rospy.Subscriber('/odom', Odometry, self.odom_callback)
+        # rospy.Subscriber('/subtask', String, self.subtask_callback)
+        # rospy.Subscriber('/armpos', Int32MultiArray, self.armpos_callback)
+        # rospy.Subscriber('/user_query', String, self.user_query_callback)
+        # rospy.Subscriber('/response_sequence', String, self.response_sequence_callback)
+        # rospy.Subscriber('/response_reason', String, self.response_reason_callback)
+        # rospy.Subscriber('/task_status', String, self.task_status_callback)
+        # rospy.Subscriber('/odom', Odometry, self.odom_callback)
 
         self.subtask_name = "--"
         self.arm_pos = str(['--', '--', '--', '--', '--', '--', '--'])
@@ -115,7 +115,7 @@ class MemoryNode:
 
 
 if __name__ == '__main__':
-    try:
+    # try:
         mem_node = MemoryNode()
 
         while True:
@@ -125,5 +125,5 @@ if __name__ == '__main__':
             mem_node.save_logs(log)
             time.sleep(2)
             # break
-    except rospy.ROSInterruptException:
-        pass
+    # except rospy.ROSInterruptException:
+    #     pass

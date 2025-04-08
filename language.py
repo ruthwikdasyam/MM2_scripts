@@ -11,6 +11,7 @@ import json
 client = OpenAI()
 
 class ReasonResponse(BaseModel):
+    plan: str
     reason: str
 
 class TaskSequence(BaseModel):
@@ -22,7 +23,7 @@ class GripperAction(BaseModel):
     reason: str
 
 class LanguageModels:
-    def __init__(self, loc_options=None, arm_options=None):
+    def __init__(self, loc_options=['ruthwik', 'zahir', 'amisha', 'kasra'], arm_options=["pickup", "dropoff"]):
 
         self.logs=""
         self.loc_options = loc_options
@@ -127,16 +128,24 @@ class LanguageModels:
         return result
 
 
-    def get_response(self):
+    def get_response(self, user_query=None):
         
         # get query from user
-        self.user_query = input("Hey, how can I help you?\n")
-
-        # data from previous attempts
-        if self.logs == "":
-            add_on = ""
+        if user_query is None:
+            self.user_query = input("Hey, how can I help you?\n")
         else:
-            add_on = f"This is the log for the previous attempt, and the robot was interrupted. {self.logs} So, consider this and plan again."
+            self.user_query = user_query
+
+        self.logs = self.get_text_from_jsonl()
+        # data from previous attempts
+        # if self.logs == "":
+        #     add_on = ""
+        # else:
+        add_on = f"""This is the log of observations for the robots previous tasks {self.logs}
+                It contains the robot's experiences, including image captions, tasks, task statuses, robot position, manipulator position, and timestamps.
+
+                """
+        # print(add_on)
 
         # **Step 1: Understanding the user query**
         reason_response = client.beta.chat.completions.parse(
@@ -145,24 +154,26 @@ class LanguageModels:
                 {
                     "role": "system",
                     "content": f"""
-                    You are a mobile manipulator robot.
+                    You are a plan generator for mobile manipulator robot. Mobile manipulator robot ia an assistant at the space, that helps people with their needs.
 
                     ### Robot Capabilities:
-                    - The **mobile robot** can navigate only to these predefined locations/people: **{self.loc_options}**. It **cannot** go anywhere else.
-                    - The **manipulator** can perform these predefined tasks: **{self.arm_options}**.
-                    - It also has a 'wait' option, stopping everything and waiting for further instructions.
-                    - The robot can also go 'home' to sleep.
+                    - The **mobile robot** can navigate to these predefined locations/people: **{self.loc_options}**
+                    - The robot can also navigate to any position, given robot's position for that location.
+                    - The robot can also pick up and drop off objects.
+                    - It can also 'wait', stopping everything and waiting.
+                    - The robot can also go to its home position.
+                    - The robot can talk back to the user or other persons.
+                    - It can also take a picture of the environment.
 
                     ### Task:
-                    Your goal is to **understand what the user wants the robot to do** and return only the reason. You do not need to generate a task sequence yet.
+                    Your goal is to **understand what the user wants the robot to do** and return the execution plan for robot to follow while using the experiences of the robot.
+                    The robots expereinces are stored in a JSONL file, which includes image captions, tasks, task statuses, robot position, manipulator position, and timestamps.
+                    The robot will use this information to understand the environment and respond better to user queries.
 
                     ### Constraints:
-                    1. Extract the **main task** from the user's input.
-                    2. If the task requires movement, identify **where** it should go.
-                    3. If it requires manipulation, identify **what** the manipulator needs to do.
-                    4. If the user requests an **invalid action** (unavailable location, person, or task), return:
-                        - `reason: Reason for the failure`
-                    5. **DO NOT** return the task sequence at this stage.
+                    1. If the task requires movement, identify **where** it should go.
+                    2. If it requires manipulation, identify **what** the manipulator needs to do.
+                    3. Respond with a clear descriptive plan for the robot to follow, and the reasoning behind it.
 
                     {add_on}
                     """
@@ -175,51 +186,64 @@ class LanguageModels:
             response_format=ReasonResponse,  # A structured class that stores only 'reason'
         )
 
-        reason_text = reason_response.choices[0].message.parsed.reason
+        reason_text = reason_response.choices[0].message.parsed
         
-        print(f"Step 1 - Reason: {reason_text}")  # Debugging print, you can remove this
+        """"""
+        # print(f"Step 1 - Reason: {reason_text}")  # Debugging print, you can remove this
 
         # **Step 2: Generating the Task Sequence**
-        sequence_response = client.beta.chat.completions.parse(
-            model="gpt-4o",
-            messages=[
-                {
-                    "role": "system",
-                    "content": f"""
-                    You are a mobile manipulator robot.
+        # sequence_response = client.beta.chat.completions.parse(
+        #     model="gpt-4o",
+        #     messages=[
+        #         {
+        #             "role": "system",
+        #             "content": f"""
+        #             You are a mobile manipulator robot.
 
-                    ### Task:
-                    Your goal is to generate a **valid sequence of tasks** based on the given reason.
+        #             ### Task:
+        #             Your goal is to generate a **valid sequence of tasks** based on the given reason.
 
-                    ### Input:
-                    - User Query: {self.user_query}
-                    - Reason: {reason_text}
+        #             ### Input:
+        #             - User Query: {self.user_query}
+        #             - Reason: {reason_text}
 
-                    ### Constraints:
-                    1. Use only the predefined locations/people: **{self.loc_options}**.
-                    2. Use only the predefined manipulator tasks: **{self.arm_options}**.
-                    3. Ensure a logical sequence, The generated sequence should alternate as follows:
-                        - **[Person Name] → [Manipulator Task] → [Person Name] → [Manipulator Task] → ...**
-                    4. If the reason states that the task **cannot** be executed, return:
-                        - `sequence: a sequence as in Constraint 3`
-                    5. Otherwise, generate a **clear and structured sequence**.
+        #             ### Constraints:
+        #             1. Use only the predefined locations/people: **{self.loc_options}**.
+        #             2. Use only the predefined manipulator tasks: **{self.arm_options}**.
+        #             3. Ensure a logical sequence, The generated sequence should alternate as follows:
+        #                 - **[Person Name] → [Manipulator Task] → [Person Name] → [Manipulator Task] → ...**
+        #             4. If the reason states that the task **cannot** be executed, return:
+        #                 - `sequence: a sequence as in Constraint 3`
+        #             5. Otherwise, generate a **clear and structured sequence**.
 
-                    {add_on}
-                    """
-                },
-                {
-                    "role": "user",
-                    "content": f"Reason: {reason_text}"
-                }
-            ],
-            response_format=TaskSequence,  # A structured response class for task sequences
-        )
+        #             {add_on}
+        #             """
+        #         },
+        #         {
+        #             "role": "user",
+        #             "content": f"Reason: {reason_text}"
+        #         }
+        #     ],
+        #     response_format=TaskSequence,  # A structured response class for task sequences
+        # )
+        sequence_response = reason_text
 
-        self.logs = f"User input: {self.user_query}. Reason: {reason_text}. Response: {sequence_response.choices[0].message.parsed.sequence}" + self.logs
+        # self.logs = f"User input: {self.user_query}. Reason: {reason_text}. Response: {sequence_response.choices[0].message.parsed.sequence}" + self.logs
 
         return sequence_response
 
-    
+    # PRIVATE METHODS
+
+    def get_text_from_jsonl(self, file_path="filtered_experiences.jsonl"):
+        texts = []
+        with open(file_path, "r") as file:
+            for line in file:
+                line = line.strip()
+                if line:  # skip empty lines
+                    texts.append(line)
+        return texts
+
+
     def generate_keywords(self, user_query):
 
         # Using the new API method for text generation
@@ -283,10 +307,13 @@ if __name__ == "__main__":
     llm = LanguageModels()
     llm.connection_check()
     # Example usage
-    user_query = "Can you pick up the red ball from the table?"
+    # user_query = "Can you pick up the red ball from the table?"
+    user_query = input("Enter your query: ")
     keywords = llm.generate_keywords(user_query)
     print(f"Extracted Keywords: {keywords}")
     llm.filter_experiences("robot_logs.jsonl", "filtered_experiences.jsonl", keywords.split(","))
     
+    response = llm.get_response(user_query=user_query)
+    print(response)
 
     
