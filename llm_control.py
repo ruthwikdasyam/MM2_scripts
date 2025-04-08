@@ -163,6 +163,7 @@ class RandomGoalSetter:
                         print("waiting done")
                         
                         if key_== "q":
+                            self.task_status.publish("Interrupted")                                        # publishing task status - runn
                             print("Breaking ....")
                             self.breaking = True
                             break
@@ -177,6 +178,8 @@ class RandomGoalSetter:
                         print(f"log -- {self.llm.logs}")
 
                 if self.breaking==False:
+                    self.subtask_name.publish(" ")                                            # publishing current task
+                    self.task_status.publish("All tasks successful")                                        # publishing task status - runn
                     print("Job done :) Bye") 
 
                             
