@@ -1,7 +1,0 @@
-Mobile Manipulator
-
-What do we want the robot to do. Example queries.
-
-Where is my cup, i couldnt find it.
-Are there any pens in this room.
-im hungry, i need a chocolate

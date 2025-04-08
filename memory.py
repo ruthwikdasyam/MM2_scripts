@@ -1,26 +1,32 @@
 #!/usr/bin/env python
 
-# import rospy
-# from std_msgs.msg import String, Int32MultiArray
-# from nav_msgs.msg import Odometry
+import rospy
+from std_msgs.msg import String, Int32MultiArray
+from nav_msgs.msg import Odometry
 import time
 import json
 from datetime import datetime
 from language import LanguageModels
+from sensor_msgs.msg import CompressedImage
+from cv_bridge import CvBridge
+import cv2
+import numpy as np
 
 class MemoryNode:
 
     def __init__(self):
         # Initialize the ROS node
-        # rospy.init_node('memory_node', anonymous=True)
+        rospy.init_node('memory_node', anonymous=True)
 
-        # rospy.Subscriber('/subtask', String, self.subtask_callback)
-        # rospy.Subscriber('/armpos', Int32MultiArray, self.armpos_callback)
-        # rospy.Subscriber('/user_query', String, self.user_query_callback)
-        # rospy.Subscriber('/response_sequence', String, self.response_sequence_callback)
-        # rospy.Subscriber('/response_reason', String, self.response_reason_callback)
-        # rospy.Subscriber('/task_status', String, self.task_status_callback)
-        # rospy.Subscriber('/odom', Odometry, self.odom_callback)
+        rospy.Subscriber('/subtask', String, self.subtask_callback)
+        rospy.Subscriber('/armpos', Int32MultiArray, self.armpos_callback)
+        rospy.Subscriber('/user_query', String, self.user_query_callback)
+        rospy.Subscriber('/response_sequence', String, self.response_sequence_callback)
+        rospy.Subscriber('/response_reason', String, self.response_reason_callback)
+        rospy.Subscriber('/task_status', String, self.task_status_callback)
+        rospy.Subscriber('/odom', Odometry, self.odom_callback)
+        self.bridge = CvBridge()
+        rospy.Subscriber("/camera/color/image_raw/compressed", CompressedImage, self.rs_callback)
 
         self.subtask_name = "--"
         self.arm_pos = str(['--', '--', '--', '--', '--', '--', '--'])
@@ -31,6 +37,7 @@ class MemoryNode:
         self.odom_entry = " "
         self.loc_options = ["ruthwik", "zahir", "amisha", "kasra", "home"]
         self.arm_options = ["pickup", "dropoff"]
+        self.image = None
 
         self.llm = LanguageModels(loc_options=self.loc_options, arm_options=self.arm_options)
         
@@ -67,6 +74,9 @@ class MemoryNode:
         # Store all in an array
         self.odom_entry = str([x, y, z, ox, oy, oz, ow])
 
+    def rs_callback(self, msg):
+        np_arr = np.frombuffer(msg.data, np.uint8)
+        self.image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
     def get_log(self):
         log = {}
@@ -90,7 +100,10 @@ class MemoryNode:
         }
         # Camera Observation
         # try:
-        log["camera_observation"] = self.llm.get_vlm_feedback(task="caption")
+        if self.image is not None:
+            log["camera_observation"] = self.llm.get_vlm_feedback(task="caption", rs_image=self.image)
+        else:
+            log["camera_observation"] = " "
         # except Exception as e:
         #     log["camera_observation"] = f"Error: Could not capture image. ({str(e)})"
         # Task Progress
@@ -103,7 +116,7 @@ class MemoryNode:
 
 
     def save_logs(self, log_entry):
-        log_file = "robot_logs.jsonl"  # JSONL (JSON Lines) format for continuous logging
+        log_file = "memory_logs/robot_logs.jsonl"  # JSONL (JSON Lines) format for continuous logging
         try:
             json_line = json.dumps(log) 
             with open(log_file, "a") as file:
