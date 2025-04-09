@@ -87,16 +87,17 @@ class RandomGoalSetter:
 
 
     def publish_goal(self):
-        response = self.llm.get_response()
+        response = self.llm.get_response_with_memory()
         self.user_query.publish(self.llm.user_query)                                  # publsihing user query
-        self.response_sequence.publish(str(response.choices[0].message.parsed.sequence))   # publishing task sequence
-        self.response_reason.publish(str(response.choices[0].message.parsed.reason))       # publishing reason from llm
+        self.response_sequence.publish(str(response.plan))   # publishing task sequence
+        self.response_reason.publish(str(response.reason))       # publishing reason from llm
+        print("query received")
 
         while True:
             # checking if:
             if self.breaking == False:
-                print(response.choices[0].message.parsed.sequence)
-                print(response.choices[0].message.parsed.reason)
+                print(response.plan)
+                print(response.reason)
                 is_valid = (input(f"Is the sequence valid? \n"))  # do we need to put this ?
             else:
                 is_valid = "n"
@@ -106,8 +107,8 @@ class RandomGoalSetter:
                 print(f"logs: \n {self.llm.logs}")
                 response = self.llm.get_response()
                 self.user_query.publish(self.llm.user_query)                                  # publsihing user query
-                self.response_sequence.publish(str(response.choices[0].message.parsed.sequence))   # publishing task sequence
-                self.response_reason.publish(str(response.choices[0].message.parsed.reason))       # publishing reason from llm
+                self.response_sequence.publish(str(response.plan))   # publishing task sequence
+                self.response_reason.publish(str(response.reason))       # publishing reason from llm
                 self.breaking = False
 
             else: 

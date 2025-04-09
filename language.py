@@ -29,7 +29,14 @@ class LanguageModels:
         self.loc_options = loc_options
         self.arm_options = arm_options
 
-
+        # dict contaning functions and things it needs to execute
+        self.robots_actions = {
+            "navigate_to_person":["person_name"],
+            "navigate_to_point":["x","y","z","w1","w2","w3","w4"],
+            "navigate_to_object":["object_name"],
+            "manipulate":["pickup or place"],
+            "ask_user":["question"],
+        }
     
     def connection_check(self):
         print("Connected")
@@ -167,8 +174,7 @@ class LanguageModels:
                     "role": "system",
                     "content": f"""
         You are a task planner for a **mobile manipulator robot assistant** that helps users in a shared workspace.
-        The robot has memory, vision, and manipulation abilities, and it continuously logs its experiences. 
-        You should generate thoughtful, step-by-step plans grounded in both its **capabilities** and **past experiences**.
+        The robot has memory, vision, and manipulation abilities, and it continuously logs its experiences.
         ---
         ### Robot Memory
         You have access to the robot's memory 
@@ -178,12 +184,12 @@ class LanguageModels:
         - llm - User queries, corresponding LLM responses and reasoning
         - camera_observation - description of what the robot had seen from that point
         - task_progress - task_name that is executed and task_status
-        Use this memory to reason about the context and generate smarter, grounded plans. 
+        Use this memory to reason about the context and generate smarter plans for this robot. 
         ---
         ### Robot Capabilities
         The robot can:
         - Navigate to people or predefined places: **{self.loc_options}**
-        - Move to a specific (x,y,z,w,x,y,z) position if given
+        - Move to a specific (x,y,z,w,x,y,z) base_position
         - Approach objects (identified visually)
         - Capture images and return captions of its surroundings
         - Use its manipulator to pick/place objects
@@ -193,16 +199,10 @@ class LanguageModels:
         ### Your Objective
         Given a **user query**, your job is to:
         1. Understand the user's intent.
-        2. Review the robot's **memory and observations** to inform your response.
-        3. Generate a **descriptive and logically ordered plan using the constraints defined below** for the robot to execute, using its abilities and past experiences.
+        2. Review the robot's memory to inform your response.
+        3. Generate a descriptive plan based on what user needs for the robot to execute using its abilities and past experiences.
         ---
-        ### Constraints & Expectations
-        - If movement is needed, specify where (position) and why.
-        - If manipulation is needed, define what (object) and why.
-        - If visual inspection is required, describe how the robot will use its camera.
-        - If given memory are relevant, reference them with reasoning.
-        - You may ask clarifying questions if needed anytime during execution.
-        - Respond with a **step-by-step execution plan** and a short **reasoning** section explaining your thought process.
+        -Respond with a plan and a reason why the plan should work.
         ---
         """
                 },
@@ -259,8 +259,36 @@ class LanguageModels:
 
         return sequence_response
 
-    # PRIVATE METHODS
 
+    def get_response_sequence(self, plan, reason):
+
+        # **Step 1: Understanding the user query**
+        sequence_response = client.beta.chat.completions.parse(
+            model="gpt-4o",
+            messages=[
+                {
+                    "role": "system",
+                    "content": f"""
+            you are generating a sequence of tasks for the mobile manipulator robot.
+            An assistant has generated a plan for the robot to follow. your job is to generate the task sequence which should be in {self.robots_actions} 
+            Make sure to define the parameters required for each task.
+        ---
+        """
+                },
+                {
+                    "role": "user",
+                    "content": f"Robots plan: {plan} Reason: {reason}."
+                }
+            ],
+            response_format=TaskSequence,
+        )
+
+        response_2 = sequence_response.choices[0].message.parsed
+        return response_2
+
+
+
+    # PRIVATE METHODS
     def get_text_from_jsonl(self, file_path="memory_files/filtered_experiences.jsonl"):
         texts = []
         with open(file_path, "r") as file:
@@ -308,13 +336,18 @@ class LanguageModels:
             for line in infile: 
                 experience = json.loads(line)
                 
-                # Extract relevant fields for keyword matching
-                text_fields = [
-                    experience["camera_observation"],
-                    experience["llm"]["user_query"],
-                    experience["task_progress"]["task_name"],
-                    experience["task_progress"]["task_status"]
-                ]
+                if experience["type"]=="status":
+                    # Extract relevant fields for keyword matching
+                    text_fields = [
+                        experience["camera_observation"],
+                        experience["task_progress"]["task_name"],
+                        experience["task_progress"]["task_status"]
+                    ]
+                elif experience["type"]=="llm":
+                    text_fields = [
+                        experience["llm"]["user_query"],
+                        experience["llm"]["response"]
+                    ]
 
                 # Check if any keyword appears in the text fields
                 if any(keyword.lower() in " ".join(text_fields).lower() for keyword in keywords):
@@ -327,6 +360,20 @@ class LanguageModels:
                 outfile.write("\n")  # Ensure each experience is on a new line
 
         print(f"Filtered {len(filtered_experiences)} experiences and saved to {output_file}")
+
+
+    def get_response_with_memory(self):
+
+        query = input("Hey, how can I help you?\n")
+        keywords = self.generate_keywords(query)
+        print(f"Extracted Keywords: {keywords}")
+        self.filter_experiences("memory_files/robot_logs.jsonl", "memory_files/filtered_experiences.jsonl", keywords.split(","))
+        response = self.get_response(user_query=query)
+        print(response)
+        response_2 = self.get_response_sequence(plan=response.plan, reason=response.reason)
+        print("\nTask Sequence ------")
+        print(response_2)
+        return True
 
 
 if __name__ == "__main__":

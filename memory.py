@@ -58,7 +58,7 @@ class MemoryNode:
     def response_reason_callback(self, data):
         self.response_reason = data.data
         log = self.get_log(type="llm")
-        # print(json.dumps(log, indent=4))
+        print(json.dumps(log, indent=4))
         self.save_logs(log)
     
     def task_status_callback(self, data):
@@ -87,6 +87,7 @@ class MemoryNode:
         if type == "status":
             # Timestamp
             log["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            log["type"] = "status"
             # Robot Status and Position
             log["robot"] = {
                 "status": {
@@ -97,6 +98,12 @@ class MemoryNode:
                     "base_position": self.odom_entry,  #  list [x, y, z]
                     "arm_position": self.arm_pos
                 }}
+            
+            # log["llm"] = {
+            #     "user_query": self.user_query,
+            #     "response": self.response_sequence,
+            #     "reasoning": self.response_reason
+            # }
             # Camera Observation
             # try:
             if self.image is not None:
@@ -116,6 +123,7 @@ class MemoryNode:
         elif type == "llm":
             # Timestamp
             log["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            log["type"] = "llm"
             # LLM Logs
             log["llm"] = {
                 "user_query": self.user_query,
@@ -126,7 +134,7 @@ class MemoryNode:
 
 
     def save_logs(self, log):
-        log_file = "memory_logs/robot_logs.jsonl"  # JSONL (JSON Lines) format for continuous logging
+        log_file = "memory_files/robot_logs.jsonl"  # JSONL (JSON Lines) format for continuous logging
         try:
             json_line = json.dumps(log) 
             with open(log_file, "a") as file:
