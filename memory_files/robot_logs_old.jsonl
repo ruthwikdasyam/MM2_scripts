@@ -21,6 +21,9 @@
         "task_status": "--"
     }
 }
+
+
+
 {
     "timestamp": "2025-04-02 16:52:59",
     "robot": {
@@ -32,11 +35,6 @@
             "base_position": "[-0.4750278384520348, 1.0521038021650628, 0.0, 0.0, 0.0, -0.04196284348472369, 0.9991191719543152]",
             "arm_position": "['--', '--', '--', '--', '--', '--', '--']"
         }
-    },
-    "llm": {
-        "user_query": "--",
-        "response": "--",
-        "reasoning": "--"
     },
     "camera_observation": "A person working at a desk with a laptop, a blue water bottle, and some cardboard boxes. The setting appears to be an office with another desk holding various items, including a monitor and cables.",
     "task_progress": {
