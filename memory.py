@@ -154,7 +154,7 @@ if __name__ == '__main__':
             log = mem_node.get_log(type="status")
             print(json.dumps(log, indent=4))
             mem_node.save_logs(log)
-            time.sleep(2)
+            # time.sleep(2)
             # break
     # except rospy.ROSInterruptException:
     #     pass
