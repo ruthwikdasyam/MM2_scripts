@@ -21,7 +21,7 @@ class MemoryNode:
         rospy.Subscriber('/subtask', String, self.subtask_callback)
         rospy.Subscriber('/armpos', Int32MultiArray, self.armpos_callback)
         rospy.Subscriber('/user_query', String, self.user_query_callback)
-        rospy.Subscriber('/response_sequence', String, self.response_sequence_callback)
+        rospy.Subscriber('/response_plan', String, self.response_plan_callback)
         rospy.Subscriber('/response_reason', String, self.response_reason_callback)
         rospy.Subscriber('/task_status', String, self.task_status_callback)
         rospy.Subscriber('/odom', Odometry, self.odom_callback)
@@ -31,7 +31,7 @@ class MemoryNode:
         self.subtask_name = "--"
         self.arm_pos = str(['--', '--', '--', '--', '--', '--', '--'])
         self.user_query = "--"
-        self.response_sequence = "--"
+        self.response_plan = "--"
         self.response_reason = "--"
         self.task_status = "--"
         self.odom_entry = " "
@@ -52,8 +52,8 @@ class MemoryNode:
     def user_query_callback(self, data):
         self.user_query = data.data
 
-    def response_sequence_callback(self, data):
-        self.response_sequence = data.data
+    def response_plan_callback(self, data):
+        self.response_plan = data.data
     
     def response_reason_callback(self, data):
         self.response_reason = data.data
@@ -101,7 +101,7 @@ class MemoryNode:
             
             # log["llm"] = {
             #     "user_query": self.user_query,
-            #     "response": self.response_sequence,
+            #     "response": self.response_plan,
             #     "reasoning": self.response_reason
             # }
             # Camera Observation
@@ -127,7 +127,7 @@ class MemoryNode:
             # LLM Logs
             log["llm"] = {
                 "user_query": self.user_query,
-                "response": self.response_sequence,
+                "response": self.response_plan,
                 "reasoning": self.response_reason
             }
             return log
@@ -154,7 +154,7 @@ if __name__ == '__main__':
             log = mem_node.get_log(type="status")
             print(json.dumps(log, indent=4))
             mem_node.save_logs(log)
-            # time.sleep(2)
+            time.sleep(2)
             # break
     # except rospy.ROSInterruptException:
     #     pass

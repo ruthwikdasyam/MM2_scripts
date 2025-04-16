@@ -303,17 +303,17 @@ class LanguageModels:
 
         # Using the new API method for text generation
         response = client.chat.completions.create(
-            model="gpt-4o",  # Use the appropriate model name (e.g., "gpt-4")
+            model="gpt-4o",
             messages=[{
                 "role": "user",
-                "content":  f"Extract the most relevant keywords from the following user query. "
-                            f"These keywords will be used to filter robot experiences, which include image captions, tasks, task statuses, "
-                            f"robot position, manipulator position, and timestamps. The goal is to find experiences that match the intent "
-                            f"of the user query. Focus on key objects, actions, locations, and task-related terms.\n\n"
+                "content":  f"Extraplanct all relevant and related keywords from the following user query. "
+                            f"These keywords will be used to search robot experiences that include image captions, tasks, task statuses, "
+                            f"The goal is to retrieve all experiences that are possibly relevant "
+                            f"to the user query's intent. Extract keywords that include key objects, actions, locations, task-related terms, as well as related synonyms, "
+                            f"paraphrases, and contextual variations. Be exhaustive to ensure broad matching.\n\n"
                             f"User query: '{user_query}'\n\n"
-                            f"Provide only a comma-separated list of keywords, without any explanations."
+                            f"Provide only a comma-separated list of keywords and phrases, without any explanations."
             }],
-            # max_tokens=50,
             temperature=0.5
         )
         # Extract the keywords from the response
@@ -346,7 +346,8 @@ class LanguageModels:
                 elif experience["type"]=="llm":
                     text_fields = [
                         experience["llm"]["user_query"],
-                        experience["llm"]["response"]
+                        experience["llm"]["response"],
+                        experience["llm"]["reasoning"]
                     ]
 
                 # Check if any keyword appears in the text fields
@@ -366,14 +367,16 @@ class LanguageModels:
 
         query = input("Hey, how can I help you?\n")
         keywords = self.generate_keywords(query)
-        print(f"Extracted Keywords: {keywords}")
+        print(f"\nExtracted Keywords: {keywords}")
         self.filter_experiences("memory_files/robot_logs.jsonl", "memory_files/filtered_experiences.jsonl", keywords.split(","))
         response = self.get_response(user_query=query)
-        print(response)
+        print(f"\n{response.plan}")
+        print(f"\n{response.reason}")
         response_2 = self.get_response_sequence(plan=response.plan, reason=response.reason)
         print("\nTask Sequence ------")
-        print(response_2)
-        return True
+        print(f"{response_2.sequence}")
+        print(f"\n{response_2.reason}")
+        return response
 
 
 if __name__ == "__main__":
