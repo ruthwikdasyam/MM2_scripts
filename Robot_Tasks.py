@@ -30,7 +30,7 @@ Functions to include
 """
 
 
-class RobotActions:
+class RobotTasks:
     def __init__(self):
 
         # Accessing saved locations
@@ -51,10 +51,11 @@ class RobotActions:
         # subscribers
         # rospy.Subscriber("/camera/color/image_raw/compressed", CompressedImage, self._rs_callback)
         rospy.Subscriber('/highlevel_response', GoalStatusArray, self.sequence_callback)           # reading robot status
+        rospy.Subscriber('/user_query', String, self.input_callback)
 
         # Initialize variables
         self.sequence = ""
-        self.possible_actions = ["go_to_person", "go_to_point", "approach_object", "get_image_caption", "set_arm_position", "ask_user"]
+        self.possible_tasks = ["go_to_person", "go_to_point", "approach_object", "get_image_caption", "set_arm_position", "ask_user"]
 
 
     # private method
@@ -63,10 +64,34 @@ class RobotActions:
     #     self.image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
 
-    
+    # PRIVATE METHODS
     def sequence_callback(self, msg):
         self.sequence = msg
 
+    def input_callback(self,msg):
+        self.user_input = msg
+
+
+    def read_pose_from_file(self, filename):
+        with open(filename, 'r') as file:
+            parsed_data = yaml.safe_load(file)
+        pose_data = parsed_data['pose']
+        position = pose_data['position']
+        orientation = pose_data['orientation']
+        covariance = parsed_data['covariance']
+        # Create a PoseWithCovarianceStamped message
+        pose_msg = PoseWithCovarianceStamped()
+        pose_msg.pose.pose = Pose(
+            position=Point(position['x'], position['y'], position['z']),
+            orientation=Quaternion(orientation['x'], orientation['y'], orientation['z'], orientation['w'])
+            )
+        pose_msg.pose.covariance = covariance
+        pose_msg.header.frame_id = "map"
+        pose_msg.header.stamp = rospy.Time.now()
+        return pose_msg
+    
+
+    # PUBLIC METHODS
     def go_to_person(self, name: str):
         '''
         Input: place name {str},
@@ -103,13 +128,11 @@ class RobotActions:
         pass
 
 
-
     def approach_object(self, object_name: str):
         '''
         Input: object_name {str}
         Ouput: Robot moves with visual navigation
         '''
-
         pass
 
     def get_image_caption(self):
@@ -150,9 +173,8 @@ class RobotActions:
         user_response = input(f"Hey user: {data}")
         # if none, then continue
         # initial goal sending should be from here
-        
-
         pass
+
 
     def wait(self):
         '''
@@ -162,38 +184,21 @@ class RobotActions:
         pass
 
 
-    # PRIVATE METHODS
-    def read_pose_from_file(self, filename):
-        with open(filename, 'r') as file:
-            parsed_data = yaml.safe_load(file)
-        pose_data = parsed_data['pose']
-        position = pose_data['position']
-        orientation = pose_data['orientation']
-        covariance = parsed_data['covariance']
-        # Create a PoseWithCovarianceStamped message
-        pose_msg = PoseWithCovarianceStamped()
-        pose_msg.pose.pose = Pose(
-            position=Point(position['x'], position['y'], position['z']),
-            orientation=Quaternion(orientation['x'], orientation['y'], orientation['z'], orientation['w'])
-            )
-        pose_msg.pose.covariance = covariance
-        pose_msg.header.frame_id = "map"
-        pose_msg.header.stamp = rospy.Time.now()
-        return pose_msg
+
     
 
 
 if __name__ == "__main__":
-    rospy.init_node("robot_actions", anonymous=True)
-    coco = RobotActions()
+    rospy.init_node("robot_tasks", anonymous=True)
+    coco = RobotTasks()
 
     # verify the sequence
     assert coco.sequence != "", "No sequence received"
     print(f"Sequence: {coco.sequence}")
 
-    for action in coco.sequence:
-        if action in coco.possible_actions:
-            getattr(coco, action)()  # Call the method dynamically
+    for task in coco.sequence:
+        if task in coco.possible_tasks:
+            getattr(coco, task)()  # Call the method dynamically
             continue
         else:
-            print(f"Unknown action: {action}")
+            print(f"Unknown task: {task}")

@@ -264,32 +264,39 @@ class LanguageModels:
 
 
     def get_response_sequence(self, plan, reason):
-        task_sequence_schema = {
-                        "type": "object",
-                        "properties": {
-                            "tasks": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "task_name": { "type": "string" },
-                                        "parameters": {
-                                            "type": "object",
-                                            "additionalProperties": {
-                                                "oneOf": [
-                                                    { "type": "string" },
-                                                    { "type": "number" },
-                                                    { "type": "array", "items": { "type": ["string", "number"] } }
-                                                ]
-                                            }
+        task_sequence_tool = {
+            "type": "function",
+            "function": {
+                "name": "generate_task_sequence",
+                "description": "Generate a task sequence for a mobile manipulator robot.",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "tasks": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "task_name": { "type": "string" },
+                                    "parameters": {
+                                        "type": "object",
+                                        "additionalProperties": {
+                                            "oneOf": [
+                                                { "type": "string" },
+                                                { "type": "number" },
+                                                { "type": "array", "items": { "type": ["string", "number"] } }
+                                            ]
                                         }
-                                    },
-                                    "required": ["task_name", "parameters"]
-                                }
+                                    }
+                                },
+                                "required": ["task_name", "parameters"]
                             }
-                        },
-                        "required": ["tasks"]
-                    }
+                        }
+                    },
+                    "required": ["tasks"]
+                }
+            }
+        }
 
 
         # **Step 1: Understanding the user query**
@@ -304,6 +311,7 @@ class LanguageModels:
                     An assistant has generated a plan for the robot to follow. 
                     Your job is to generate the task sequence which should be in {self.robots_actions}.
                     Make sure to define the parameters required for each task.
+                    Respond with a JSON format only.
                     """
                 },
                 {
@@ -311,17 +319,45 @@ class LanguageModels:
                     "content": f"Robots plan: {plan} Reason: {reason}."
                 }
             ],
-            # response_format="schema",  # key part!
+            # response_format=task_sequence_schema,  # key part!
             # schema=task_sequence_schema   # NOT `response_format_schema`
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "robot_task_sequence",
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "steps": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "action": {"type": "string"},
+                                        "parameter": {"type": "string"}
+                                    },
+                                    "required": ["action", "parameter"],
+                                    "additionalProperties": False
+                                }
+                            },
+                            "final_answer": {"type": "string"}
+                        },
+                        "required": ["steps", "final_answer"],
+                        "additionalProperties": False
+                    },
+                    "strict": True
+                }
+            }
+
             )
 
-        # response_2 = sequence_response.choices[0].message.content
+        response_2 = sequence_response.choices[0].message.content
         # respose generated by this function is a sequence of tasks that the robot should follow.
         # This should be in dict format with
         #    Keys: task_name
         #    Values: parameters
         # return response_2
-        return
+        return  response_2
 
 
 
@@ -412,8 +448,12 @@ class LanguageModels:
         print(f"\n{response.reason}")
         response_2 = self.get_response_sequence(plan=response.plan, reason=response.reason)
         print("\nTask Sequence ------")
-        print(f"{response_2.sequence}")
-        print(f"\n{response_2.reason}")
+        # print(response_2)
+        data = json.loads(response_2)
+        for i, step in enumerate(data["steps"], start=1):
+            print(f"Step {i}: {step['action']}, = {step['parameter']}")
+        # print(f"{response_2.sequence}")
+        # print(f"\n{response_2.reason}")
         return response
 
 
