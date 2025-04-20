@@ -12,3 +12,18 @@ mygello.rest()
 # mygello.pickup()
 # mygello.dropoff()
 print(mygello.read_encoder_values())
+
+
+print(mygello.read_camera_encoder_values())
+
+mygello.camera_home()
+
+# for i in range(10):
+#     mygello.camera_home()
+#     time.sleep(1)
+#     mygello.camera_turn_left()
+#     time.sleep(1)
+#     mygello.camera_home()
+#     time.sleep(1)
+#     mygello.camera_turn_right()
+#     time.sleep(1)
