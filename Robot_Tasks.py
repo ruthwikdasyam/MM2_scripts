@@ -32,6 +32,7 @@ Functions to include
 
 class RobotTasks:
     def __init__(self):
+        rospy.init_node("robot_tasks", anonymous=True)
 
         # Accessing saved locations
         self.pose_dict = {}        
@@ -39,9 +40,10 @@ class RobotTasks:
         for key, fl in location_map.items():            
             self.pose_dict[key] = self.read_pose_from_file(f"/home/nvidia/catkin_ws/src/nav_assistant/poses/{fl}.txt")        
         self.loc_options = ', '.join(list(location_map.keys()))
+        self.arm_options = ["pickup", "dropoff"]
         
         # Instantiating
-        self.mygello = GELLOcontroller("doodle", torque_start=True)
+        # self.mygello = GELLOcontroller("doodle", torque_start=True)
         self.llm = LanguageModels(loc_options=self.loc_options, arm_options=self.arm_options)
 
         # publishers
@@ -50,13 +52,13 @@ class RobotTasks:
         
         # subscribers
         # rospy.Subscriber("/camera/color/image_raw/compressed", CompressedImage, self._rs_callback)
-        rospy.Subscriber('/highlevel_response', GoalStatusArray, self.sequence_callback)           # reading robot status
+        rospy.Subscriber('/highlevel_response', String, self.sequence_callback)           # reading robot status
         rospy.Subscriber('/user_query', String, self.input_callback)
 
         # Initialize variables
         self.sequence = ""
         self.possible_tasks = ["go_to_person", "go_to_point", "approach_object", "get_image_caption", "set_arm_position", "ask_user"]
-
+        self.vlm_for_gripper = 0
 
     # private method
     # def _rs_callback(self, msg):
@@ -67,9 +69,13 @@ class RobotTasks:
     # PRIVATE METHODS
     def sequence_callback(self, msg):
         self.sequence = msg
+        # print(self.sequence)
 
     def input_callback(self,msg):
         self.user_input = msg
+        if self.user_input == "wait":
+            self.wait()
+        self.sequence=""
 
 
     def read_pose_from_file(self, filename):
@@ -170,9 +176,11 @@ class RobotTasks:
         Input: what to ask user {str}
         Output: Asks user
         '''
+        
+        # this ask user thing should go to main input
         user_response = input(f"Hey user: {data}")
-        # if none, then continue
-        # initial goal sending should be from here
+
+        
         pass
 
 
@@ -189,16 +197,21 @@ class RobotTasks:
 
 
 if __name__ == "__main__":
-    rospy.init_node("robot_tasks", anonymous=True)
     coco = RobotTasks()
 
     # verify the sequence
-    assert coco.sequence != "", "No sequence received"
+    # assert coco.sequence != "", "No sequence received"
     print(f"Sequence: {coco.sequence}")
 
-    for task in coco.sequence:
-        if task in coco.possible_tasks:
-            getattr(coco, task)()  # Call the method dynamically
-            continue
-        else:
-            print(f"Unknown task: {task}")
+    while not rospy.is_shutdown():
+        if coco.sequence != "":
+            # Parse the JSON string
+            seq = json.loads(coco.sequence.data)
+            # Loop through the list of steps inside the "steps" key
+            for step in seq["steps"]:
+                print(step)
+                if step["action"] in coco.possible_tasks:
+                    getattr(coco, step["action"])(step["parameter"])  # Call the method dynamically
+                else:
+                    print(f"Unknown task: {step['action']}")
+        time.sleep(1)

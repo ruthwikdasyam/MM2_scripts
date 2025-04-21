@@ -23,6 +23,7 @@ class MemoryNode:
         rospy.Subscriber('/user_query', String, self.user_query_callback)
         rospy.Subscriber('/response_plan', String, self.response_plan_callback)
         rospy.Subscriber('/response_reason', String, self.response_reason_callback)
+        rospy.Subscriber('/highlevel_response', String, self.sequence_callback)
         rospy.Subscriber('/task_status', String, self.task_status_callback)
         rospy.Subscriber('/odom', Odometry, self.odom_callback)
         self.bridge = CvBridge()
@@ -57,6 +58,9 @@ class MemoryNode:
     
     def response_reason_callback(self, data):
         self.response_reason = data.data
+    
+    def sequence_callback(self, data):
+        self.sequence = data.data
         log = self.get_log(type="llm")
         print(json.dumps(log, indent=4))
         self.save_logs(log)
@@ -128,7 +132,8 @@ class MemoryNode:
             log["llm"] = {
                 "user_query": self.user_query,
                 "response": self.response_plan,
-                "reasoning": self.response_reason
+                "reasoning": self.response_reason,
+                "sequence": self.sequence
             }
             return log
 

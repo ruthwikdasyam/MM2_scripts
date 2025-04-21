@@ -22,9 +22,8 @@ class UserInputNode:
 
         # Initialize variables
 
-
         # Initialize language model
-        self.llm = LanguageModels(loc_options=self.loc_options, arm_options=self.arm_options)
+        # self.llm = LanguageModels(loc_options=self.loc_options, arm_options=self.arm_options)
 
         # Initialize publishers
         self.input_pub = rospy.Publisher('/user_query', String, queue_size=10)

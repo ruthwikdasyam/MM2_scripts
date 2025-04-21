@@ -422,6 +422,7 @@ class LanguageModels:
                         experience["llm"]["user_query"],
                         experience["llm"]["response"],
                         experience["llm"]["reasoning"]
+                        # experience["llm"]["sequence"]
                     ]
 
                 # Check if any keyword appears in the text fields
@@ -437,41 +438,43 @@ class LanguageModels:
         print(f"Filtered {len(filtered_experiences)} experiences and saved to {output_file}")
 
 
-    def get_response_with_memory(self):
-
-        query = input("Hey, how can I help you?\n")
-        keywords = self.generate_keywords(query)
-        print(f"\nExtracted Keywords: {keywords}")
-        self.filter_experiences("memory_files/robot_logs.jsonl", "memory_files/filtered_experiences.jsonl", keywords.split(","))
-        response = self.get_response(user_query=query)
-        print(f"\n{response.plan}")
-        print(f"\n{response.reason}")
-        response_2 = self.get_response_sequence(plan=response.plan, reason=response.reason)
-        print("\nTask Sequence ------")
-        # print(response_2)
-        data = json.loads(response_2)
-        for i, step in enumerate(data["steps"], start=1):
-            print(f"Step {i}: {step['action']}, = {step['parameter']}")
+    # def get_response_with_memory(self):
+        # query = input("Hey, how can I help you?\n")
+        # keywords = self.generate_keywords(query)
+        # print(f"\nExtracted Keywords: {keywords}")
+        # self.filter_experiences("memory_files/robot_logs.jsonl", "memory_files/filtered_experiences.jsonl", keywords.split(","))
+        # response = self.get_response(user_query=query)
+        # print(f"\n{response.plan}")
+        # print(f"\n{response.reason}")
+        # response_2 = self.get_response_sequence(plan=response.plan, reason=response.reason)
+        # print("\nTask Sequence ------")
+        # # print(response_2)
+        # data = json.loads(response_2)
+        # for i, step in enumerate(data["steps"], start=1):
+        #     print(f"Step {i}: {step['action']}, = {step['parameter']}")
         # print(f"{response_2.sequence}")
         # print(f"\n{response_2.reason}")
-        return response
+        # return response
 
 
 if __name__ == "__main__":
 
     llm = LanguageModels()
     llm.connection_check()
-    # Example usage
-    # user_query = "Can you pick up the red ball from the table?"
-    # user_query = input("Enter your query: ")
-    # keywords = llm.generate_keywords(user_query)
-    # print(f"Extracted Keywords: {keywords}")
-    # llm.filter_experiences("memory_files/robot_logs.jsonl", "memory_files/filtered_experiences.jsonl", keywords.split(","))
-    
-    # response = llm.get_response(user_query=user_query)
-    # print(response.plan)
-    # print("\n")
-    # print(response.reason)
 
-    llm.get_response_with_memory()
+    query = input("Hey, how can I help you?\n")
+    keywords = llm.generate_keywords(query)
+    print(f"\nExtracted Keywords: {keywords}")
+    llm.filter_experiences("memory_files/robot_logs.jsonl", "memory_files/filtered_experiences.jsonl", keywords.split(","))
+    response = llm.get_response(user_query=query)
+    print(f"\n{response.plan}")
+    print(f"\n{response.reason}")
+    response_2 = llm.get_response_sequence(plan=response.plan, reason=response.reason)
+    print("\nTask Sequence ------")
+    # print(response_2)
+    data = json.loads(response_2)
+    for i, step in enumerate(data["steps"], start=1):
+        print(f"Step {i}: {step['action']}, = {step['parameter']}")
     
+    
+    # publish info
