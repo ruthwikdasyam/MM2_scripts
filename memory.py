@@ -20,17 +20,21 @@ class MemoryNode:
 
         rospy.Subscriber('/subtask', String, self.task_name_callback)
         rospy.Subscriber('/parameter', String, self.parameter_callback)
-        rospy.Subscriber('/armpos', Int32MultiArray, self.armpos_callback)
+        rospy.Subscriber('/task_status', String, self.task_status_callback)
+
         rospy.Subscriber('/user_query', String, self.user_query_callback)
         rospy.Subscriber('/response_plan', String, self.response_plan_callback)
         rospy.Subscriber('/response_reason', String, self.response_reason_callback)
         rospy.Subscriber('/highlevel_response', String, self.sequence_callback)
-        rospy.Subscriber('/task_status', String, self.task_status_callback)
+
+        rospy.Subscriber('/armpos', Int32MultiArray, self.armpos_callback)
         rospy.Subscriber('/odom', Odometry, self.odom_callback)
+
         self.bridge = CvBridge()
         rospy.Subscriber("/camera/color/image_raw/compressed", CompressedImage, self.rs_callback)
 
-        self.subtask_name = "--"
+        self.task_name = "--"
+        self.parameter = '--'
         self.arm_pos = str(['--', '--', '--', '--', '--', '--', '--'])
         self.user_query = "--"
         self.response_plan = "--"
@@ -99,8 +103,8 @@ class MemoryNode:
             # Robot Status and Position
             log["robot"] = {
                 "status": {
-                    "base_status": "Active" if self.subtask_name in self.loc_options else "Rest",
-                    "arm_status": "Active" if self.subtask_name in self.arm_options else "Rest"
+                    "base_status": "Active" if self.task_name in self.loc_options else "Rest",
+                    "arm_status": "Active" if self.task_name in self.arm_options else "Rest"
                 },
                 "position": {
                     "base_position": self.odom_entry,  #  list [x, y, z]
@@ -159,7 +163,7 @@ if __name__ == '__main__':
     # try:
         mem_node = MemoryNode()
 
-        while True:
+        while not rospy.is_shutdown():
             print("logging...")
             log = mem_node.get_log(type="status")
             print(json.dumps(log, indent=4))
@@ -167,5 +171,5 @@ if __name__ == '__main__':
             time.sleep(2)
             # break
     # except rospy.ROSInterruptException:
-    #     pass
+    #     break
     

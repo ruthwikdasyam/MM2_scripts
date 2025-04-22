@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from actionlib_msgs.msg import GoalStatusArray
 from geometry_msgs.msg import Pose, Point, Quaternion, PoseWithCovarianceStamped, PoseStamped
 from nav_msgs.msg import Odometry
-from mobilegello.gello_controller import GELLOcontroller 
+from mobilegello.gello_controller import GELLOcontroller
 from language import LanguageModels
 from actionlib_msgs.msg import GoalID
 from std_msgs.msg import String, Int32MultiArray
@@ -55,6 +55,7 @@ class HighLevelInference:
         self.breaking = False
         self.current_pose = 0
         self.run_now = 0
+        self.user_query = ""
         # params
         self.vlm_for_gripper = False  # Gripper using vlm to open and close during pickup and drop off
 
@@ -98,6 +99,8 @@ class HighLevelInference:
         print(keywords)
         # Filter Experiences
         self.llm.filter_experiences("memory_files/robot_logs.jsonl", "memory_files/filtered_experiences.jsonl", keywords.split(","))
+        self.llm.get_recent_20_experiences("memory_files/robot_logs.jsonl", "memory_files/recent_experiences.jsonl")
+
         # Step 1 Response
         step1_response = self.llm.get_response(user_query=query)
         print(f"\n{step1_response.plan}")
@@ -105,9 +108,10 @@ class HighLevelInference:
         # Step 2 Response
         step2_response = self.llm.get_response_sequence(plan=step1_response.plan, reason=step1_response.reason)
         data = json.loads(step2_response)
-        for i, step in enumerate(data["steps"], start=1):
-            print(f"Step {i}: {step['action']} = {step['parameter']}")
-
+        output_lines = []
+        for i, step in enumerate(data['steps'], start=1):
+            output_lines.append(f"{i}. Task: {step['task']}, Parameter: {step['parameter']}")
+        print(output_lines)
         # publishing data
         self.response_plan.publish(str(step1_response.plan))
         self.response_reason.publish(str(step1_response.reason))
@@ -120,8 +124,9 @@ if __name__=="__main__":
     hlic=HighLevelInference()
     hlic.llm.connection_check()
     # hlic.run()
+    ch1 = time.time()
     while not rospy.is_shutdown():
-        if hlic.run_now == 1 or time.time - ch1 >= 5:
+        if hlic.run_now == 1 or time.time() - ch1 >= 25:
             ch1 = time.time()
             print("running")
             hlic.run()

@@ -64,7 +64,7 @@ class RobotTasks:
 
         # Initialize variables
         self.sequence = ""
-        self.possible_tasks = ["go_to_person", "go_to_point", "approach_object", "get_image_caption", "set_arm_position", "ask_user"]
+        self.possible_tasks = ["navigate_to_person", "navigate_to_point", "navigate_to_object", "get_image_caption", "set_arm_position", "ask_user"]
         self.vlm_for_gripper = 0
 
         self.active_server = "" #["movebase","arm"]
@@ -109,13 +109,13 @@ class RobotTasks:
         
 
     # PUBLIC METHODS
-    def go_to_person(self, name: str):
+    def navigate_to_person(self, name: str):
         '''
         Input: place name {str},
         Output: Robot moves
         '''
         self.active_server = "movebase"
-        selected_pose = self.pose_dict[name]
+        selected_pose = self.pose_dict[name.lower()]
         goal = PoseStamped()
         goal.header = selected_pose.header
         goal.pose = selected_pose.pose.pose
@@ -124,7 +124,7 @@ class RobotTasks:
             time.sleep(1)
 
 
-    def go_to_point(self, coordinate: tuple):
+    def navigate_to_point(self, coordinate: tuple):
         '''
         Input: coordinate {tuple} - (x, y, z, x, y, z, w)
         Ouput: Robot moves
@@ -146,7 +146,7 @@ class RobotTasks:
             time.sleep(1)
 
 
-    def approach_object(self, object_name: str):
+    def navigate_to_object(self, object_name: str):
         '''
         Input: object_name {str}
         Ouput: Robot moves with visual navigation
@@ -191,10 +191,11 @@ class RobotTasks:
         '''
         
         # this ask user thing should go to main input
-        user_response = input(f"Hey user: {data}")
+        # user_response = input(f"Hey user: {data}")
         # publish to use input, and break this code
-        self.askuser_pub.publish(user_response)
+        self.askuser_pub.publish(data)
         self.wait()
+        self.sequence = ""
 
 
     def wait(self):
@@ -202,7 +203,7 @@ class RobotTasks:
         Output: Stops everything and waits
         '''
         self.cancel_pub.publish(GoalID())
-
+        self.sequence = ""
 
 
     
