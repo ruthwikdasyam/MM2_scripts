@@ -49,21 +49,25 @@ class RobotTasks:
         # publishers
         self.goal_pub = rospy.Publisher('/move_base_simple/goal', PoseStamped, queue_size=10) # publishes goal point
         self.cancel_pub = rospy.Publisher('/move_base/cancel', GoalID, queue_size=10)         # cancels all goals- WAIT feature
-        
+
+        self.task_status_pub = rospy.Publisher('/task_status', String, queue_size=10)
+        self.subtask_pub = rospy.Publisher('/subtask', String, queue_size=10)                # publishes current task name
+        self.parameter_pub = rospy.Publisher('/parameter', String, queue_size=10)                # publishes current task name
+        self.askuser_pub = rospy.Publisher('/askuser', String, queue_size=10)  # to ask user for input
+
+
         # subscribers
         # rospy.Subscriber("/camera/color/image_raw/compressed", CompressedImage, self._rs_callback)
         rospy.Subscriber('/highlevel_response', String, self.sequence_callback)           # reading robot status
         rospy.Subscriber('/user_query', String, self.input_callback)
+        rospy.Subscriber('/move_base/status', GoalStatusArray, self.status_callback)           # reading robot status
 
         # Initialize variables
         self.sequence = ""
         self.possible_tasks = ["go_to_person", "go_to_point", "approach_object", "get_image_caption", "set_arm_position", "ask_user"]
         self.vlm_for_gripper = 0
 
-    # private method
-    # def _rs_callback(self, msg):
-    #     np_arr = np.frombuffer(msg.data, np.uint8)
-    #     self.image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+        self.active_server = "" #["movebase","arm"]
 
 
     # PRIVATE METHODS
@@ -77,6 +81,8 @@ class RobotTasks:
             self.wait()
         self.sequence=""
 
+    def status_callback(self, msg):
+        self.tb_status= msg.status_list[-1].status
 
     def read_pose_from_file(self, filename):
         with open(filename, 'r') as file:
@@ -96,6 +102,11 @@ class RobotTasks:
         pose_msg.header.stamp = rospy.Time.now()
         return pose_msg
     
+    def check_status(self):
+        '''
+        Output: status of robot {int}
+        '''
+        
 
     # PUBLIC METHODS
     def go_to_person(self, name: str):
@@ -103,6 +114,7 @@ class RobotTasks:
         Input: place name {str},
         Output: Robot moves
         '''
+        self.active_server = "movebase"
         selected_pose = self.pose_dict[name]
         goal = PoseStamped()
         goal.header = selected_pose.header
@@ -117,6 +129,7 @@ class RobotTasks:
         Input: coordinate {tuple} - (x, y, z, x, y, z, w)
         Ouput: Robot moves
         '''
+        self.active_server = "movebase"
         # check for format and limits
         assert len(coordinate) == 7, "Coordinate should be a tuple of length 6"
         assert all(isinstance(i, (int, float)) for i in coordinate), "All elements should be int or float"
@@ -131,7 +144,6 @@ class RobotTasks:
         for i in range(2):
             self.goal_pub.publish(goal)   # publishing navigation goal
             time.sleep(1)
-        pass
 
 
     def approach_object(self, object_name: str):
@@ -139,7 +151,7 @@ class RobotTasks:
         Input: object_name {str}
         Ouput: Robot moves with visual navigation
         '''
-        pass
+        self.active_server = "movebase"
 
     def get_image_caption(self):
         '''
@@ -153,6 +165,7 @@ class RobotTasks:
         Input: state of manipulator {str}
         Output: Manipulator moves
         '''
+        self.active_server = "arm"
         print(f"Arm is {state}")
         if state == "pickup":
             self.mygello.pickup()
@@ -179,9 +192,9 @@ class RobotTasks:
         
         # this ask user thing should go to main input
         user_response = input(f"Hey user: {data}")
-
-        
-        pass
+        # publish to use input, and break this code
+        self.askuser_pub.publish(user_response)
+        self.wait()
 
 
     def wait(self):
@@ -189,7 +202,6 @@ class RobotTasks:
         Output: Stops everything and waits
         '''
         self.cancel_pub.publish(GoalID())
-        pass
 
 
 
@@ -208,10 +220,26 @@ if __name__ == "__main__":
             # Parse the JSON string
             seq = json.loads(coco.sequence.data)
             # Loop through the list of steps inside the "steps" key
-            for step in seq["steps"]:
-                print(step)
-                if step["action"] in coco.possible_tasks:
-                    getattr(coco, step["action"])(step["parameter"])  # Call the method dynamically
-                else:
-                    print(f"Unknown task: {step['action']}")
+            # for step in seq["steps"]:
+            step = seq["steps"][0]
+            print(step)
+            if step["task"] in coco.possible_tasks:
+                getattr(coco, step["task"])(step["parameter"])  # Call the method dynamically
+                
+                coco.subtask_pub.publish(step["task"])
+                coco.parameter_pub.publish(step["parameter"])
+
+                if coco.active_server == "movebase":
+                    if coco.tb_status == 3:
+                        coco.task_status_pub.publish("completed")
+                    else:
+                        coco.task_status_pub.publish("running")
+                # elif coco.active_server == "arm":
+                #     if coco.arm_status == 3:
+                #         coco.task_status_pub.publish("completed")
+                #     else:
+                #         coco.task_status_pub.publish("running")
+    
+            else:
+                print(f"Unknown task: {step['task']}")
         time.sleep(1)

@@ -18,7 +18,8 @@ class MemoryNode:
         # Initialize the ROS node
         rospy.init_node('memory_node', anonymous=True)
 
-        rospy.Subscriber('/subtask', String, self.subtask_callback)
+        rospy.Subscriber('/subtask', String, self.task_name_callback)
+        rospy.Subscriber('/parameter', String, self.parameter_callback)
         rospy.Subscriber('/armpos', Int32MultiArray, self.armpos_callback)
         rospy.Subscriber('/user_query', String, self.user_query_callback)
         rospy.Subscriber('/response_plan', String, self.response_plan_callback)
@@ -44,8 +45,11 @@ class MemoryNode:
         
 
     # Callback functions
-    def subtask_callback(self, data):
-        self.subtask_name = data.data
+    def task_name_callback(self, data):
+        self.task_name = data.data
+
+    def parameter_callback(self, data):
+        self.parameter = data.data
 
     def armpos_callback(self, msg):
         self.arm_pos = msg.data
@@ -118,7 +122,8 @@ class MemoryNode:
             #     log["camera_observation"] = f"Error: Could not capture image. ({str(e)})"
             # Task Progress
             log["task_progress"] = {
-                "task_name": self.subtask_name,
+                "task_name": self.task_name,
+                "parameter": self.parameter,
                 "task_status": self.task_status
             }
             # Return the log as a JSON string

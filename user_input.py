@@ -9,7 +9,7 @@ from nav_msgs.msg import Odometry
 from mobilegello.gello_controller import GELLOcontroller
 from language import LanguageModels
 from actionlib_msgs.msg import GoalID
-from std_msgs.msg import String, Int32MultiArray
+from std_msgs.msg import String, Int32MultiArray, Bool
 from sensor_msgs.msg import CompressedImage
 import numpy as np
 import cv2
@@ -27,7 +27,16 @@ class UserInputNode:
 
         # Initialize publishers
         self.input_pub = rospy.Publisher('/user_query', String, queue_size=10)
+        # self.askuser_pub = rospy.Publisher('/askuser', String, queue_size=10)  # to ask user for input
 
+        # subscribers
+        rospy.Subscriber('/askuser', String, self.askuser_callback)     # reading robot status
+
+
+    def askuser_callback(self, data):
+        self.askuser_sub = data.data
+        print(f"askuser_sub: {self.askuser_sub}")
+        self.askuser_trigger = True
 
     def publish_user_input(self):
         # Get user input
@@ -42,10 +51,16 @@ class UserInputNode:
 
 if __name__ == '__main__':
     try:
-        user_input_node = UserInputNode()
+        UI = UserInputNode()
         rate = rospy.Rate(10)  # 10 Hz
         while not rospy.is_shutdown():
-            user_input_node.publish_user_input()
+            # if UI.askuser_trigger:
+            #     UI.askuser_trigger = False
+            #     rospy.loginfo(f"Published askuser: {UI.askuser_sub}")
+            #     UI.publish_user_input()
+            # else:
+                # rospy.loginfo(f"Published askuser: {UI.askuser_sub}")
+            UI.publish_user_input()
             rate.sleep()
     except rospy.ROSInterruptException:
         pass

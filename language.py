@@ -333,10 +333,10 @@ class LanguageModels:
                                 "items": {
                                     "type": "object",
                                     "properties": {
-                                        "action": {"type": "string"},
+                                        "task": {"type": "string"},
                                         "parameter": {"type": "string"}
                                     },
-                                    "required": ["action", "parameter"],
+                                    "required": ["task", "parameter"],
                                     "additionalProperties": False
                                 }
                             },
@@ -415,6 +415,7 @@ class LanguageModels:
                     text_fields = [
                         experience["camera_observation"],
                         experience["task_progress"]["task_name"],
+                        experience["task_progress"]["parameter"],
                         experience["task_progress"]["task_status"]
                     ]
                 elif experience["type"]=="llm":
