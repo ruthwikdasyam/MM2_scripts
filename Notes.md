@@ -16,3 +16,10 @@ im hungry, i need a chocolate
 - manipulator can pickup and place objects
 - It can just wait and observe without any navigation or manipualation
 - It can ask for help/clarifications needed at any point
+
+
+
+### Abstract
+
+A robot that is programmed to coexist with humans need to behave and act closely to humans.
+To achieve this, robot demonstrate behaviors to remember the events, alayze environments, communicate with humans and thus, plans tasks accordingly.  Robot continuously plans for the tasks based on its memory, observation and user inputs. This is achieved by maintaining high level and low level planning by LLM. Th

@@ -13,7 +13,12 @@ from std_msgs.msg import String, Int32MultiArray
 from sensor_msgs.msg import CompressedImage
 import numpy as np
 import cv2
+import ast
 
+import rospy
+import tf2_ros
+import tf2_geometry_msgs
+from geometry_msgs.msg import PoseStamped
 
 """
 Functions to include
@@ -40,11 +45,11 @@ class RobotTasks:
         for key, fl in location_map.items():            
             self.pose_dict[key] = self.read_pose_from_file(f"/home/nvidia/catkin_ws/src/nav_assistant/poses/{fl}.txt")        
         self.loc_options = ', '.join(list(location_map.keys()))
-        self.arm_options = ["pickup", "dropoff"]
+        self.arm_options = ["start_pickup","complete_pickup","start_dropoff","complete_dropoff"]
         
         # Instantiating
-        # self.mygello = GELLOcontroller("doodle", torque_start=True)
-        self.llm = LanguageModels(loc_options=self.loc_options, arm_options=self.arm_options)
+        self.mygello = GELLOcontroller("doodle", torque_start=True)
+        self.llm = LanguageModels()
 
         # publishers
         self.goal_pub = rospy.Publisher('/move_base_simple/goal', PoseStamped, queue_size=10) # publishes goal point
@@ -61,10 +66,11 @@ class RobotTasks:
         rospy.Subscriber('/highlevel_response', String, self.sequence_callback)           # reading robot status
         rospy.Subscriber('/user_query', String, self.input_callback)
         rospy.Subscriber('/move_base/status', GoalStatusArray, self.status_callback)           # reading robot status
+        rospy.Subscriber('/task_status', String, self.task_status_callback)
 
         # Initialize variables
         self.sequence = ""
-        self.possible_tasks = ["navigate_to_person", "navigate_to_point", "navigate_to_object", "get_image_caption", "set_arm_position", "ask_user"]
+        self.possible_tasks = ["navigate_to_person", "navigate_to_position", "navigate_to_object", "get_image_caption", "manipulate", "ask_user"]
         self.vlm_for_gripper = 0
 
         self.active_server = "" #["movebase","arm"]
@@ -74,6 +80,7 @@ class RobotTasks:
     def sequence_callback(self, msg):
         self.sequence = msg
         # print(self.sequence)
+        self.task_status_pub.publish(" ")
 
     def input_callback(self,msg):
         self.user_input = msg
@@ -83,6 +90,9 @@ class RobotTasks:
 
     def status_callback(self, msg):
         self.tb_status= msg.status_list[-1].status
+
+    def task_status_callback(self, data):
+        self.task_status = data.data
 
     def read_pose_from_file(self, filename):
         with open(filename, 'r') as file:
@@ -108,6 +118,8 @@ class RobotTasks:
         '''
         
 
+        
+
     # PUBLIC METHODS
     def navigate_to_person(self, name: str):
         '''
@@ -124,15 +136,19 @@ class RobotTasks:
             time.sleep(1)
 
 
-    def navigate_to_point(self, coordinate: tuple):
+    def navigate_to_position(self, coordinate):
         '''
         Input: coordinate {tuple} - (x, y, z, x, y, z, w)
         Ouput: Robot moves
         '''
+        coordinate = tuple(ast.literal_eval(coordinate))
+        
         self.active_server = "movebase"
+        # print(f"coordinate {coordinate}. {type(coordinate)}")
         # check for format and limits
-        assert len(coordinate) == 7, "Coordinate should be a tuple of length 6"
-        assert all(isinstance(i, (int, float)) for i in coordinate), "All elements should be int or float"
+        assert len(coordinate) == 7, "Coordinate should be a tuple of length 7"
+        # assert all(isinstance(i, (int, float)) for i in coordinate), "All elements should be int or float"
+
 
         goal = PoseStamped()
         goal.header.frame_id = "map"
@@ -160,29 +176,47 @@ class RobotTasks:
         caption = self.llm.get_vlm_feedback(task="caption", rs_image=self.image)
         return caption
 
-    def set_arm_position(self, state: str):
+    def manipulate(self, state: str):
         '''
         Input: state of manipulator {str}
         Output: Manipulator moves
         '''
         self.active_server = "arm"
         print(f"Arm is {state}")
-        if state == "pickup":
+        self.task_status_pub.publish("running")
+        
+        if state == "start_pickup":
             self.mygello.pickup()
-            while self.vlm_for_gripper: # only uses vlm to complete pickup, is this param=1
-                if self.llm.get_vlm_feedback(state)==1:
-                    break
-                time.sleep(0.5)
+            # while self.vlm_for_gripper: # only uses vlm to complete pickup, is this param=1
+            #     if self.llm.get_vlm_feedback(state)==1:
+            #         break
+            #     time.sleep(0.5)
+            # self.mygello.pickup_complete()
+
+        elif state == "close_gripper":
+            self.mygello.close_gripper()
+
+        elif state == "complete_pickup":
             self.mygello.pickup_complete()
 
-        elif state == "dropoff":
+        elif state == "start_dropoff":
             self.mygello.dropoff()
-            while self.vlm_for_gripper: # only uses vlm to complete pickup, is this param=1
-                if self.llm.get_vlm_feedback(state)==1:
-                    break
-                time.sleep(0.5)
+            # while self.vlm_for_gripper: # only uses vlm to complete pickup, is this param=1
+            #     if self.llm.get_vlm_feedback(state)==1:
+            #         break
+            #     time.sleep(0.5)
+            # self.mygello.dropoff_complete()
+
+        elif state == "open_gripper":
+            self.mygello.open_gripper()
+
+        elif state == "complete_dropoff":
             self.mygello.dropoff_complete()
 
+
+        self.task_status_pub.publish("completed")
+        # self.sequence=" "
+        time.sleep(4)
 
     def ask_user(self, data:str):
         '''
@@ -193,6 +227,7 @@ class RobotTasks:
         # this ask user thing should go to main input
         # user_response = input(f"Hey user: {data}")
         # publish to use input, and break this code
+        self.task_status_pub.publish("running")
         self.askuser_pub.publish(data)
         self.wait()
         self.sequence = ""
@@ -218,23 +253,35 @@ if __name__ == "__main__":
 
     while not rospy.is_shutdown():
         if coco.sequence != "":
+            coco.active_server = ""
             # Parse the JSON string
             seq = json.loads(coco.sequence.data)
             # Loop through the list of steps inside the "steps" key
             # for step in seq["steps"]:
             step = seq["steps"][0]
+
+            try:
+                if current_task == step["task"] and current_param == step["parameter"] and coco.task_status == "completed":
+                    step = seq["steps"][1]
+            except:
+                pass
+
             print(step)
             if step["task"] in coco.possible_tasks:
-                getattr(coco, step["task"])(step["parameter"])  # Call the method dynamically
-                
                 coco.subtask_pub.publish(step["task"])
                 coco.parameter_pub.publish(step["parameter"])
-
+                
+                getattr(coco, step["task"])(step["parameter"])  # Call the method dynamically
+                
                 if coco.active_server == "movebase":
                     if coco.tb_status == 3:
                         coco.task_status_pub.publish("completed")
                     else:
                         coco.task_status_pub.publish("running")
+
+                current_task = step["task"]
+                current_param = step["parameter"]
+
                 # elif coco.active_server == "arm":
                 #     if coco.arm_status == 3:
                 #         coco.task_status_pub.publish("completed")
@@ -244,3 +291,9 @@ if __name__ == "__main__":
             else:
                 print(f"Unknown task: {step['task']}")
         time.sleep(1)
+
+    # coco.wait()
+    # coco.navigate_to_person('zahir')
+    # coco.navigate_to_position('-2.8977617696865288, 6.7348915347955565, 0.0, 0.0, 0.0, 0.5825486289046017, 0.8127958507284401')
+    # coco.navigate_to_position('6.836892185164943, 5.983559917708442, 0.0, 0.0, 0.0, 0.12264594311087945, 0.9924504887592343')
+    # coco.navigate_to_position('-2.8, 6.3, 0.0, 0.0, 0.0, 0.5, 0.8')

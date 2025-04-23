@@ -30,7 +30,7 @@ class RandomGoalSetter:
         self.arm_options = ["pickup", "dropoff"]
 
         # initializing language model
-        self.llm = LanguageModels(loc_options=self.loc_options, arm_options=self.arm_options)
+        # self.llm = LanguageModels()
         self.mygello = GELLOcontroller("doodle", torque_start=True)
 
         # publishers

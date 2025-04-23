@@ -11,6 +11,7 @@ from sensor_msgs.msg import CompressedImage
 from cv_bridge import CvBridge
 import cv2
 import numpy as np
+from geometry_msgs.msg import PoseWithCovarianceStamped
 
 class MemoryNode:
 
@@ -29,6 +30,7 @@ class MemoryNode:
 
         rospy.Subscriber('/armpos', Int32MultiArray, self.armpos_callback)
         rospy.Subscriber('/odom', Odometry, self.odom_callback)
+        rospy.Subscriber('/amcl_pose', PoseWithCovarianceStamped, self.amcl_callback)
 
         self.bridge = CvBridge()
         rospy.Subscriber("/camera/color/image_raw/compressed", CompressedImage, self.rs_callback)
@@ -41,11 +43,14 @@ class MemoryNode:
         self.response_reason = "--"
         self.task_status = "--"
         self.odom_entry = " "
+        self.amcl_entry = " "
         self.loc_options = ["ruthwik", "zahir", "amisha", "kasra", "home"]
-        self.arm_options = ["pickup", "dropoff"]
+        self.arm_options = ["start_pickup","complete_pickup","start_dropoff","complete_dropoff"]
         self.image = None
 
-        self.llm = LanguageModels(loc_options=self.loc_options, arm_options=self.arm_options)
+        self.generate_captions = True
+
+        self.llm = LanguageModels()
         
 
     # Callback functions
@@ -88,6 +93,21 @@ class MemoryNode:
         ow = msg.pose.pose.orientation.w
         # Store all in an array
         self.odom_entry = str([x, y, z, ox, oy, oz, ow])
+   
+    def amcl_callback(self, msg):
+        # Extract position (x, y, z)
+        x = msg.pose.pose.position.x
+        y = msg.pose.pose.position.y
+        z = msg.pose.pose.position.z
+
+        # Extract orientation (quaternion: x, y, z, w)
+        ox = msg.pose.pose.orientation.x
+        oy = msg.pose.pose.orientation.y
+        oz = msg.pose.pose.orientation.z
+        ow = msg.pose.pose.orientation.w
+
+        # Store all in a stringified array
+        self.amcl_entry = str([x, y, z, ox, oy, oz, ow])
 
     def rs_callback(self, msg):
         np_arr = np.frombuffer(msg.data, np.uint8)
@@ -102,12 +122,12 @@ class MemoryNode:
             log["type"] = "status"
             # Robot Status and Position
             log["robot"] = {
-                "status": {
-                    "base_status": "Active" if self.task_name in self.loc_options else "Rest",
-                    "arm_status": "Active" if self.task_name in self.arm_options else "Rest"
-                },
+                # "status": {
+                #     "base_status": "Active" if self.task_name in self.loc_options else "Rest",
+                #     "arm_status": "Active" if self.task_name in self.arm_options else "Rest"
+                # },
                 "position": {
-                    "base_position": self.odom_entry,  #  list [x, y, z]
+                    "base_position": self.amcl_entry,  #  list [x, y, z]
                     "arm_position": self.arm_pos
                 }}
             
@@ -118,7 +138,7 @@ class MemoryNode:
             # }
             # Camera Observation
             # try:
-            if self.image is not None:
+            if self.image is not None and self.generate_captions is True:
                 log["camera_observation"] = self.llm.get_vlm_feedback(task="caption", rs_image=self.image)
             else:
                 log["camera_observation"] = " "
@@ -164,10 +184,11 @@ if __name__ == '__main__':
         mem_node = MemoryNode()
 
         while not rospy.is_shutdown():
-            print("logging...")
+            print("----------------------------------------------------------------------")
             log = mem_node.get_log(type="status")
             print(json.dumps(log, indent=4))
             mem_node.save_logs(log)
+            # if mem_node.image is None:
             time.sleep(2)
             # break
     # except rospy.ROSInterruptException:

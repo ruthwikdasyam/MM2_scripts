@@ -28,7 +28,7 @@ class HighLevelInference:
         self.arm_options = ["pickup", "dropoff"]
 
         # initializing language model
-        self.llm = LanguageModels(loc_options=self.loc_options, arm_options=self.arm_options)
+        self.llm = LanguageModels()
         # self.mygello = GELLOcontroller("doodle", torque_start=True)
 
         # publishers
@@ -103,19 +103,22 @@ class HighLevelInference:
 
         # Step 1 Response
         step1_response = self.llm.get_response(user_query=query)
-        print(f"\n{step1_response.plan}")
-        print(f"\n{step1_response.reason}")
+        # print(f"\n{step1_response.plan}")
+        print(f"\nReason: \n{step1_response.reason}\n")
         # Step 2 Response
         step2_response = self.llm.get_response_sequence(plan=step1_response.plan, reason=step1_response.reason)
         data = json.loads(step2_response)
         output_lines = []
         for i, step in enumerate(data['steps'], start=1):
-            output_lines.append(f"{i}. Task: {step['task']}, Parameter: {step['parameter']}")
-        print(output_lines)
+            print(f"{i}. Task: {step['task']} : {step['parameter']}")
+            # output_lines.append(f"{i}. Task: {step['task']}, Parameter: {step['parameter']}")
+        # print(output_lines)
+        print("--------------------------------------------")
         # publishing data
         self.response_plan.publish(str(step1_response.plan))
         self.response_reason.publish(str(step1_response.reason))
         self.sequence.publish(step2_response)
+
 
 
 
@@ -126,9 +129,9 @@ if __name__=="__main__":
     # hlic.run()
     ch1 = time.time()
     while not rospy.is_shutdown():
-        if hlic.run_now == 1 or time.time() - ch1 >= 25:
+        if hlic.run_now == 1 or time.time() - ch1 >= 15:
             ch1 = time.time()
-            print("running")
+            print("Thinking...")
             hlic.run()
             hlic.run_now = 0
         time.sleep(1)

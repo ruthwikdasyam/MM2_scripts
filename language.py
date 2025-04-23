@@ -26,22 +26,24 @@ class GripperAction(BaseModel):
 
 
 class LanguageModels:
-    def __init__(self, loc_options=['ruthwik', 'zahir', 'amisha', 'kasra'], arm_options=["pickup", "dropoff"]):
+    def __init__(self, loc_options=['ruthwik', 'zahir', 'amisha', 'kasra'], arm_options=["start_pickup","complete_pickup","start_dropoff","complete_dropoff"]):
 
         self.logs=""
         self.loc_options = loc_options
-        self.arm_options = arm_options
+        self.arm_options = ["start_pickup","open_gripper", "complete_pickup","start_dropoff","close_gripper","complete_dropoff"]
 
         # dict contaning functions and things it needs to execute
         self.robots_actions = {
-            "navigate_to_person":["person_name"],
-            "manipulate":["pickup or place"],
+            "navigate_to_person":[f"one person_name from {self.loc_options} only"],
+            "navigate_to_position":["x","y","z","w1","w2","w3","w4"],
+            "manipulate":[f"one function_name from {self.arm_options} only"],
+            "navigate_to_object":["object_name"],
             "ask_user":["question"],
         }
     
         # self.robots_actions = {
         #     "navigate_to_person":["person_name"],
-        #     "navigate_to_point":["x","y","z","w1","w2","w3","w4"],
+        #     "navigate_to_position":["x","y","z","w1","w2","w3","w4"],
         #     "navigate_to_object":["object_name"],
         #     "manipulate":["pickup or place"],
         #     "ask_user":["question"],
@@ -124,10 +126,10 @@ class LanguageModels:
         elif task == "caption":
             system_prompt = """
             You are assisting a robotic mobile manipulator in understanding its environment.
-            From the image provided, generate a detailed and structured caption describing:
+            From the image provided, generate a brief caption describing:
             The objects present (including their types, colors, relative sizes, and locations)
             Any people or animals in the scene and their activities or interactions
-            The layout or structure of the environment (e.g., indoors/outdoors, room type, background details)
+            The layout or structure of the environment.
             Any actions or events taking place
             Possible affordances or interactions the robot could perform with objects
             Relevant semantic context that would help the robot remember or reason about this scene later
@@ -203,11 +205,13 @@ class LanguageModels:
         ---
         ### Robot Capabilities
         The robot can:
-        - Navigate to people or predefined places: **{self.loc_options}**
+        - Navigate to only these people: **{self.loc_options}**
+        - Capture images and return captions of its surroundings
+        - Use its manipulator to pick/place objects and has only options to **{self.arm_options}**
+            - to pick it can start_pickup, then, close_gripper, and it performs complete_pickup
+            - to pick it can start_dropoff, then, open_gripper, and, it performs complete_dropoff
         - Move to a specific (x,y,z,w,x,y,z) base_position
         - Approach objects (identified visually)
-        - Capture images and return captions of its surroundings
-        - Use its manipulator to pick/place objects
         - Communicate with users and ask for clarifications
         - Wait/idle and observe without taking action
         ---
@@ -230,6 +234,14 @@ class LanguageModels:
         )
 
         reason_text = reason_response.choices[0].message.parsed
+        
+        # - Navigate to people or predefined places: **{self.loc_options}**
+        # - Move to a specific (x,y,z,w,x,y,z) base_position
+        # - Approach objects (identified visually)
+        # - Capture images and return captions of its surroundings
+        # - Use its manipulator to pick/place objects             
+        # - Communicate with users and ask for clarifications
+        # - Wait/idle and observe without taking action
         
         # print(f"Step 1 - Reason: {reason_text}")  # Debugging print, you can remove this
 
@@ -392,7 +404,7 @@ class LanguageModels:
             model="gpt-4o",
             messages=[{
                 "role": "user",
-                "content":  """
+                "content":  f"""
                             Extract all relevant and related keywords from the following user query.
                             These keywords will be used to search robot experiences that include image captions, tasks, task statuses,
                             The goal is to retrieve all experiences that are possibly relevant to the user query's intent. Extract keywords that include key objects, actions, locations, task-related terms, as well as related synonyms,
@@ -407,7 +419,6 @@ class LanguageModels:
         keywords = response.choices[0].message.content
         return keywords
     
-
 
 
     def filter_experiences(self, input_file, output_file, keywords):
@@ -450,7 +461,7 @@ class LanguageModels:
                 json.dump(exp, outfile)
                 outfile.write("\n")  # Ensure each experience is on a new line
 
-        print(f"Filtered {len(filtered_experiences)} experiences and saved to {output_file}")
+        print(f"Filtered {len(filtered_experiences)} experiences")
 
 
 
@@ -506,7 +517,7 @@ class LanguageModels:
                 json.dump(exp, outfile)
                 outfile.write("\n")
 
-        print(f"Collected {len(recent_experiences)} recent experiences within the last {time_window_minutes} minutes.")
+        print(f"Collected {len(recent_experiences)} recent experiences")
 
 
     # def get_response_with_memory(self):

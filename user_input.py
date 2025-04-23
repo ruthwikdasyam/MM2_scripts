@@ -27,10 +27,12 @@ class UserInputNode:
 
         # Initialize publishers
         self.input_pub = rospy.Publisher('/user_query', String, queue_size=10)
+        self.task_status_pub = rospy.Publisher('/task_status', String, queue_size=10)
         # self.askuser_pub = rospy.Publisher('/askuser', String, queue_size=10)  # to ask user for input
 
         # subscribers
         rospy.Subscriber('/askuser', String, self.askuser_callback)     # reading robot status
+        self.askuser_trigger = False
 
 
     def askuser_callback(self, data):
@@ -43,7 +45,6 @@ class UserInputNode:
         input_text = input("Enter your command: ")
         # Publish the user input
         self.input_pub.publish(input_text)
-        rospy.loginfo(f"Published user input: {input_text}")
         # Sleep for a bit to ensure the message is sent
         rospy.sleep(0.1)
         return
@@ -54,13 +55,14 @@ if __name__ == '__main__':
         UI = UserInputNode()
         rate = rospy.Rate(10)  # 10 Hz
         while not rospy.is_shutdown():
-            # if UI.askuser_trigger:
-            #     UI.askuser_trigger = False
-            #     rospy.loginfo(f"Published askuser: {UI.askuser_sub}")
-            #     UI.publish_user_input()
-            # else:
+            if UI.askuser_trigger:
+                UI.askuser_trigger = False
                 # rospy.loginfo(f"Published askuser: {UI.askuser_sub}")
-            UI.publish_user_input()
+                UI.publish_user_input()
+                UI.task_status_pub.publish("completed")
+            else:
+                # rospy.loginfo(f"Published askuser: {UI.askuser_sub}")
+                UI.publish_user_input()
             rate.sleep()
     except rospy.ROSInterruptException:
         pass
