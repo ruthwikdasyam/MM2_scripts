@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from actionlib_msgs.msg import GoalStatusArray
 from geometry_msgs.msg import Pose, Point, Quaternion, PoseWithCovarianceStamped, PoseStamped
 from nav_msgs.msg import Odometry
-from mobilegello.gello_controller import GELLOcontroller 
+from mobilegello.gello_controller import GELLOcontroller
 from language import LanguageModels
 from actionlib_msgs.msg import GoalID
 from std_msgs.msg import String, Int32MultiArray

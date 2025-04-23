@@ -184,7 +184,8 @@ class LanguageModels:
                     "role": "system",
                     "content": f"""
         You are a task planner for a **mobile manipulator robot assistant** that helps users in a shared workspace.
-        The robot has memory, vision, and manipulation abilities, and it continuously logs its experiences.
+        You need to keep planning and executing tasks based on user queries, robot experiences, and progress.
+        The robot has memory, vision, and manipulation abilities, and it continuously logs its experiences and you should plan further.
         ---
         ### Robot Memory
         You have access to the robot's memory 
@@ -196,8 +197,10 @@ class LanguageModels:
         - task_progress - task_name that is executed and task_status
         Use this memory to reason about the context and generate smarter plans for this robot. 
         ---
+        ### Robot Logs
         You also have access to its current logs, which is recent robot logs on the task its running.
         Use this to check "task_status" and understand the progress and plan further, if progressed. Here are current logs {self.recent_experiences}
+        ---
         ### Robot Capabilities
         The robot can:
         - Navigate to people or predefined places: **{self.loc_options}**
@@ -209,12 +212,12 @@ class LanguageModels:
         - Wait/idle and observe without taking action
         ---
         ### Your Objective
-        Given a **user query**, your job is to:
-        1. Understand the user's intent.
+        Given a **user query**, **current task logs**, and **Memory** your job is to:
+        1. Understand the user's intent and task progress, **if any**.
         2. Review the robot's memory to inform your response.
-        3. Generate a descriptive plan based on what user needs for the robot to execute using its abilities and past experiences.
+        3. Generate a descriptive plan based on what user needs, and what progress robot has completed, for the robot to execute, using its abilities and progress.
         ---
-        -Respond with a plan and a reason why the plan should work.
+        -Respond with a plan that robot should further implement, and a reason why the plan should work.
         ---
         """
                 },
@@ -307,6 +310,8 @@ class LanguageModels:
             }
         }
 
+        # self.filtered_experiences = self.get_text_from_jsonl(file_path="memory_files/filtered_experiences.jsonl")
+        # self.recent_experiences = self.get_text_from_jsonl(file_path="memory_files/recent_experiences.jsonl")
 
         # **Step 1: Understanding the user query**
         # Make sure you're using the chat.completions.create
@@ -316,10 +321,10 @@ class LanguageModels:
                 {
                     "role": "system",
                     "content": f"""
-                    You are generating a sequence of tasks for the mobile manipulator robot.
-                    An assistant has generated a plan for the robot to follow. 
-                    Your job is to generate the task sequence which should be in {self.robots_actions}.
-                    Make sure to define the parameters required for each task.
+                    You are generating a sequence of tasks for the mobile manipulator robot should further perform.
+                    An assistant has generated a plan that robot should further perform for the robot to follow based on these robots relavant previous experiences {self.filtered_experiences} and current task logs {self.recent_experiences}.
+                    Your job is to generate the task sequence that robot should futher perform which should be in {self.robots_actions}.
+                    Make sure to define the parameters required for each task. You are allowed to directly use the base_position and arm_position from the robot's status in the previous experience if you plan to navigate to that specific location.
                     Respond with a JSON format only.
                     """
                 },
@@ -387,13 +392,14 @@ class LanguageModels:
             model="gpt-4o",
             messages=[{
                 "role": "user",
-                "content":  f"Extract all relevant and related keywords from the following user query. "
-                            f"These keywords will be used to search robot experiences that include image captions, tasks, task statuses, "
-                            f"The goal is to retrieve all experiences that are possibly relevant "
-                            f"to the user query's intent. Extract keywords that include key objects, actions, locations, task-related terms, as well as related synonyms, "
-                            f"paraphrases, and contextual variations. Be exhaustive to ensure broad matching.\n\n"
-                            f"User query: '{user_query}'\n\n"
-                            f"Provide only a comma-separated list of keywords and phrases, without any explanations."
+                "content":  """
+                            Extract all relevant and related keywords from the following user query.
+                            These keywords will be used to search robot experiences that include image captions, tasks, task statuses,
+                            The goal is to retrieve all experiences that are possibly relevant to the user query's intent. Extract keywords that include key objects, actions, locations, task-related terms, as well as related synonyms,
+                            paraphrases, and contextual variations. Be exhaustive to ensure broad matching.\n
+                            User query: '{user_query}'\n\n
+                            Provide only a comma-separated list of keywords and phrases, without any explanation
+                            """
             }],
             temperature=0.5
         )
