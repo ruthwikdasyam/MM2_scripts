@@ -39,7 +39,7 @@ class RandomGoalSetter:
         # memory
         self.subtask_name = rospy.Publisher('/subtask', String, queue_size=10)                # publishes current task name
         self.arm_pos = rospy.Publisher('/armpos', Int32MultiArray, queue_size=10)             # publishes current pos of manip
-        self.user_query = rospy.Publisher('/user_query', String, queue_size=10)
+        self.user_query = rospy.Publisher('/user_input', String, queue_size=10)
         self.response_plan = rospy.Publisher('/response_plan', String, queue_size=10)
         self.response_reason = rospy.Publisher('/response_reason', String, queue_size=10)
         self.task_status = rospy.Publisher('/task_status', String, queue_size=10)

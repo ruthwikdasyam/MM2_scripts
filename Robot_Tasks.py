@@ -23,14 +23,14 @@ from geometry_msgs.msg import PoseStamped
 """
 Functions to include
 
-1. Navigate to person
-2. Navigate to Point
-3. Navigate to object
-4. Find object
-4. Manipulate
-   - pickup
-   - dropoff
-3. Ask user
+
+"navigate_to_person":[f"one person_name from {self.loc_options} only"],
+"navigate_to_position":["x","y","z","w1","w2","w3","w4"],
+"navigate_to_object":["object_name"],
+"manipulate":[f"one function_name from {self.arm_options} only"],
+"get_image_caption":["prompt on what you want to know"],
+"ask_user":["question"],
+"wait":[],
 
 """
 
@@ -48,7 +48,7 @@ class RobotTasks:
         self.arm_options = ["start_pickup","complete_pickup","start_dropoff","complete_dropoff"]
         
         # Instantiating
-        self.mygello = GELLOcontroller("doodle", torque_start=True)
+        # self.mygello = GELLOcontroller("doodle", torque_start=True)
         self.llm = LanguageModels()
 
         # publishers
@@ -59,12 +59,13 @@ class RobotTasks:
         self.subtask_pub = rospy.Publisher('/subtask', String, queue_size=10)                # publishes current task name
         self.parameter_pub = rospy.Publisher('/parameter', String, queue_size=10)                # publishes current task name
         self.askuser_pub = rospy.Publisher('/askuser', String, queue_size=10)  # to ask user for input
+        self.user_input_pub = rospy.Publisher('/user_input', String, queue_size=10)
 
 
         # subscribers
-        # rospy.Subscriber("/camera/color/image_raw/compressed", CompressedImage, self._rs_callback)
+        rospy.Subscriber("/camera/color/image_raw/compressed", CompressedImage, self._rs_callback)
         rospy.Subscriber('/highlevel_response', String, self.sequence_callback)           # reading robot status
-        rospy.Subscriber('/user_query', String, self.input_callback)
+        rospy.Subscriber('/user_input', String, self.input_callback)
         rospy.Subscriber('/move_base/status', GoalStatusArray, self.status_callback)           # reading robot status
         rospy.Subscriber('/task_status', String, self.task_status_callback)
 
@@ -94,9 +95,14 @@ class RobotTasks:
     def task_status_callback(self, data):
         self.task_status = data.data
 
+    def rs_callback(self, msg):
+        np_arr = np.frombuffer(msg.data, np.uint8)
+        self.image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
     def read_pose_from_file(self, filename):
         with open(filename, 'r') as file:
             parsed_data = yaml.safe_load(file)
+
         pose_data = parsed_data['pose']
         position = pose_data['position']
         orientation = pose_data['orientation']
@@ -112,11 +118,12 @@ class RobotTasks:
         pose_msg.header.stamp = rospy.Time.now()
         return pose_msg
     
+
     def check_status(self):
         '''
         Output: status of robot {int}
         '''
-        
+        pass    
 
         
 
@@ -149,7 +156,6 @@ class RobotTasks:
         assert len(coordinate) == 7, "Coordinate should be a tuple of length 7"
         # assert all(isinstance(i, (int, float)) for i in coordinate), "All elements should be int or float"
 
-
         goal = PoseStamped()
         goal.header.frame_id = "map"
         goal.header.stamp = rospy.Time.now()
@@ -169,12 +175,14 @@ class RobotTasks:
         '''
         self.active_server = "movebase"
 
-    def get_image_caption(self):
+    def get_image_caption(self, data):
         '''
         Output: Caption for image {str}
         '''
-        caption = self.llm.get_vlm_feedback(task="caption", rs_image=self.image)
-        return caption
+        self.task_status_pub.publish("running")
+        response = self.llm.get_vlm_feedback(task="caption_2", rs_image=self.image, question=data)
+        self.user_input_pub.publish(response)
+        self.task_status_pub.publish("completed")
 
     def manipulate(self, state: str):
         '''
@@ -223,7 +231,6 @@ class RobotTasks:
         Input: what to ask user {str}
         Output: Asks user
         '''
-        
         # this ask user thing should go to main input
         # user_response = input(f"Hey user: {data}")
         # publish to use input, and break this code
@@ -290,6 +297,7 @@ if __name__ == "__main__":
     
             else:
                 print(f"Unknown task: {step['task']}")
+                coco.user_input_pub.publish(f"Unknown task: {step['task']}")
         time.sleep(1)
 
     # coco.wait()
@@ -297,3 +305,4 @@ if __name__ == "__main__":
     # coco.navigate_to_position('-2.8977617696865288, 6.7348915347955565, 0.0, 0.0, 0.0, 0.5825486289046017, 0.8127958507284401')
     # coco.navigate_to_position('6.836892185164943, 5.983559917708442, 0.0, 0.0, 0.0, 0.12264594311087945, 0.9924504887592343')
     # coco.navigate_to_position('-2.8, 6.3, 0.0, 0.0, 0.0, 0.5, 0.8')
+

@@ -26,7 +26,7 @@ class UserInputNode:
         # self.llm = LanguageModels(loc_options=self.loc_options, arm_options=self.arm_options)
 
         # Initialize publishers
-        self.input_pub = rospy.Publisher('/user_query', String, queue_size=10)
+        self.input_pub = rospy.Publisher('/user_input', String, queue_size=10)
         self.task_status_pub = rospy.Publisher('/task_status', String, queue_size=10)
         # self.askuser_pub = rospy.Publisher('/askuser', String, queue_size=10)  # to ask user for input
 

@@ -27,7 +27,7 @@ class GripperAction(BaseModel):
 
 class LanguageModels:
     def __init__(self, loc_options=['ruthwik', 'zahir', 'amisha', 'kasra'], arm_options=["start_pickup","complete_pickup","start_dropoff","complete_dropoff"]):
-
+        
         self.logs=""
         self.loc_options = loc_options
         self.arm_options = ["start_pickup","open_gripper", "complete_pickup","start_dropoff","close_gripper","complete_dropoff"]
@@ -36,18 +36,13 @@ class LanguageModels:
         self.robots_actions = {
             "navigate_to_person":[f"one person_name from {self.loc_options} only"],
             "navigate_to_position":["x","y","z","w1","w2","w3","w4"],
-            "manipulate":[f"one function_name from {self.arm_options} only"],
             "navigate_to_object":["object_name"],
+            "manipulate":[f"one function_name from {self.arm_options} only"],
+            "get_image_caption":["prompt on what you want to know"],
             "ask_user":["question"],
+            "wait":[],
         }
     
-        # self.robots_actions = {
-        #     "navigate_to_person":["person_name"],
-        #     "navigate_to_position":["x","y","z","w1","w2","w3","w4"],
-        #     "navigate_to_object":["object_name"],
-        #     "manipulate":["pickup or place"],
-        #     "ask_user":["question"],
-        # }
 
     def connection_check(self):
         print("Connected")
@@ -84,7 +79,7 @@ class LanguageModels:
         return 
 
 
-    def get_vlm_feedback(self, task, rs_image):
+    def get_vlm_feedback(self, task, rs_image, question=None):
         # if not task=="pickup" or not task=="dropoff" or not task=="caption":
             # print("exiting")
             # print(f"Task {task} not in pickup/dropoff for Gripper")
@@ -136,6 +131,13 @@ class LanguageModels:
             Be concise, yet include all important observations that would help a robot perceive, remember, and act in this environment.
             """
 
+        elif task == "caption_2":
+            system_prompt = f"""
+            You are assisting a robotic mobile manipulator in understanding its environment.
+            From the image provided, generate a brief caption describing what robot needs to know.
+            Heres the question its asking: {question}
+            """
+
         response = client.chat.completions.create(
             model="gpt-4o",
             messages=[
@@ -144,7 +146,7 @@ class LanguageModels:
                     "role": "user",
                     "content": [
                         # {"type": "text", "text": f"Analyze the image and decide the correct action for the '{task}' task."},
-                        {"type": "text", "text": f"Understand the image and caption it"},
+                        {"type": "text", "text": f"Understand the image and respond"},
                         {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}}
                     ]
                 }
@@ -206,14 +208,14 @@ class LanguageModels:
         ### Robot Capabilities
         The robot can:
         - Navigate to only these people: **{self.loc_options}**
-        - Capture images and return captions of its surroundings
+        - Move to a specific position (x,y,z,w,x,y,z) base_position
+        - Navigate to specific object (identified visually)
         - Use its manipulator to pick/place objects and has only options to **{self.arm_options}**
             - to pick it can start_pickup, then, close_gripper, and it performs complete_pickup
             - to pick it can start_dropoff, then, open_gripper, and, it performs complete_dropoff
-        - Move to a specific (x,y,z,w,x,y,z) base_position
-        - Approach objects (identified visually)
+        - Robot sees through the camera on it. Capture images and return what you want to know about it
         - Communicate with users and ask for clarifications
-        - Wait/idle and observe without taking action
+        - Wait/idle stopping everything that you are doing
         ---
         ### Your Objective
         Given a **user query**, **current task logs**, and **Memory** your job is to:
@@ -333,9 +335,9 @@ class LanguageModels:
                 {
                     "role": "system",
                     "content": f"""
-                    You are generating a sequence of tasks for the mobile manipulator robot should further perform.
+                    You are generating a sequence of tasks for the mobile manipulator robot should perform.
                     An assistant has generated a plan that robot should further perform for the robot to follow based on these robots relavant previous experiences {self.filtered_experiences} and current task logs {self.recent_experiences}.
-                    Your job is to generate the task sequence that robot should futher perform which should be in {self.robots_actions}.
+                    Your job is to generate the task sequence with appropriate parameters, that robot should futher perform which should be in {self.robots_actions}.
                     Make sure to define the parameters required for each task. You are allowed to directly use the base_position and arm_position from the robot's status in the previous experience if you plan to navigate to that specific location.
                     Respond with a JSON format only.
                     """
@@ -407,8 +409,8 @@ class LanguageModels:
                 "content":  f"""
                             Extract all relevant and related keywords from the following user query.
                             These keywords will be used to search robot experiences that include image captions, tasks, task statuses,
-                            The goal is to retrieve all experiences that are possibly relevant to the user query's intent. Extract keywords that include key objects, actions, locations, task-related terms, as well as related synonyms,
-                            paraphrases, and contextual variations. Be exhaustive to ensure broad matching.\n
+                            The goal is to retrieve all experiences that are possibly relevant to the user query's intent. Extract keywords that include task-related terms, as well as related synonyms,
+                            Be exhaustive to ensure broad matching.\n
                             User query: '{user_query}'\n\n
                             Provide only a comma-separated list of keywords and phrases, without any explanation
                             """
@@ -445,7 +447,7 @@ class LanguageModels:
                     ]
                 elif experience["type"]=="llm":
                     text_fields = [
-                        experience["llm"]["user_query"],
+                        experience["llm"]["user_input"],
                         experience["llm"]["response"],
                         experience["llm"]["reasoning"]
                         # experience["llm"]["sequence"]

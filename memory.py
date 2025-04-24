@@ -23,7 +23,7 @@ class MemoryNode:
         rospy.Subscriber('/parameter', String, self.parameter_callback)
         rospy.Subscriber('/task_status', String, self.task_status_callback)
 
-        rospy.Subscriber('/user_query', String, self.user_query_callback)
+        rospy.Subscriber('/user_input', String, self.user_query_callback)
         rospy.Subscriber('/response_plan', String, self.response_plan_callback)
         rospy.Subscriber('/response_reason', String, self.response_reason_callback)
         rospy.Subscriber('/highlevel_response', String, self.sequence_callback)
@@ -159,7 +159,7 @@ class MemoryNode:
             log["type"] = "llm"
             # LLM Logs
             log["llm"] = {
-                "user_query": self.user_query,
+                "user_input": self.user_query,
                 "response": self.response_plan,
                 "reasoning": self.response_reason,
                 "sequence": self.sequence

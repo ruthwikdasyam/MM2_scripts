@@ -38,7 +38,7 @@ class HighLevelInference:
         # memory
         self.subtask_name = rospy.Publisher('/subtask', String, queue_size=10)                # publishes current task name
         self.arm_pos = rospy.Publisher('/armpos', Int32MultiArray, queue_size=10)             # publishes current pos of manip
-        # self.user_query = rospy.Publisher('/user_query', String, queue_size=10)
+        # self.user_query = rospy.Publisher('/user_input', String, queue_size=10)
         self.response_plan = rospy.Publisher('/response_plan', String, queue_size=10)
         self.response_reason = rospy.Publisher('/response_reason', String, queue_size=10)
         self.sequence = rospy.Publisher('/highlevel_response', String, queue_size=10)
@@ -47,18 +47,18 @@ class HighLevelInference:
         # subscribers
         rospy.Subscriber('/move_base/status', GoalStatusArray, self.status_callback)           # reading robot status
         rospy.Subscriber('/odom', Odometry, self.odom_callback)                                # reading from odom - current position
-        rospy.Subscriber('/user_query', String, self.user_query_callback)
-        
+        rospy.Subscriber('/user_input', String, self.user_query_callback)
+        rospy.Subscriber('/askuser', String, self.askuser_callback)
 
         # initialize variables
         self.tb_status = 0
         self.breaking = False
         self.current_pose = 0
         self.run_now = 0
-        self.user_query = ""
+        self.user_query_sub = ""
         # params
         self.vlm_for_gripper = False  # Gripper using vlm to open and close during pickup and drop off
-
+        self.run_high_level = 1
 
 
     def odom_callback(self, msg):
@@ -68,8 +68,13 @@ class HighLevelInference:
         self.tb_status= msg.status_list[-1].status
 
     def user_query_callback(self, data):
-        self.user_query = data.data
+        self.user_query_sub = data.data
+        self.run_high_level = 1
         self.run_now = 1
+
+    def askuser_callback(self, data):
+        self.askuser_sub = data.data
+        self.run_high_level = 0
 
     def read_pose_from_file(self, filename):
         with open(filename, 'r') as file:
@@ -93,7 +98,7 @@ class HighLevelInference:
 
         # user input
         # query = input("Hello! How can i help :)")
-        query = self.user_query
+        query = self.user_query_sub
         # Get Keywords
         keywords = self.llm.generate_keywords(query)
         print(keywords)
@@ -129,11 +134,12 @@ if __name__=="__main__":
     # hlic.run()
     ch1 = time.time()
     while not rospy.is_shutdown():
-        if hlic.run_now == 1 or time.time() - ch1 >= 15:
-            ch1 = time.time()
-            print("Thinking...")
-            hlic.run()
-            hlic.run_now = 0
+        if hlic.run_high_level == 1:
+            if hlic.run_now == 1 or time.time() - ch1 >= 15:
+                ch1 = time.time()
+                print("Thinking...")
+                hlic.run()
+                hlic.run_now = 0
         time.sleep(1)
 
 
