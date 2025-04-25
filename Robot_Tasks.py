@@ -63,7 +63,7 @@ class RobotTasks:
 
 
         # subscribers
-        rospy.Subscriber("/camera/color/image_raw/compressed", CompressedImage, self._rs_callback)
+        rospy.Subscriber("/camera/color/image_raw/compressed", CompressedImage, self.rs_callback)
         rospy.Subscriber('/highlevel_response', String, self.sequence_callback)           # reading robot status
         rospy.Subscriber('/user_input', String, self.input_callback)
         rospy.Subscriber('/move_base/status', GoalStatusArray, self.status_callback)           # reading robot status
@@ -181,7 +181,7 @@ class RobotTasks:
         '''
         self.task_status_pub.publish("running")
         response = self.llm.get_vlm_feedback(task="caption_2", rs_image=self.image, question=data)
-        self.user_input_pub.publish(response)
+        # self.user_input_pub.publish(response)
         self.task_status_pub.publish("completed")
 
     def manipulate(self, state: str):

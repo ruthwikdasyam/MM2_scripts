@@ -36,14 +36,13 @@ class LanguageModels:
         self.robots_actions = {
             "navigate_to_person":[f"one person_name from {self.loc_options} only"],
             "navigate_to_position":["x","y","z","w1","w2","w3","w4"],
-            "navigate_to_object":["object_name"],
             "manipulate":[f"one function_name from {self.arm_options} only"],
             "get_image_caption":["prompt on what you want to know"],
             "ask_user":["question"],
             "wait":[],
         }
     
-
+    # "navigate_to_object":["object_name"],
     def connection_check(self):
         print("Connected")
 
@@ -209,7 +208,7 @@ class LanguageModels:
         The robot can:
         - Navigate to only these people: **{self.loc_options}**
         - Move to a specific position (x,y,z,w,x,y,z) base_position
-        - Navigate to specific object (identified visually)
+
         - Use its manipulator to pick/place objects and has only options to **{self.arm_options}**
             - to pick it can start_pickup, then, close_gripper, and it performs complete_pickup
             - to pick it can start_dropoff, then, open_gripper, and, it performs complete_dropoff
@@ -236,6 +235,7 @@ class LanguageModels:
         )
 
         reason_text = reason_response.choices[0].message.parsed
+        # - Navigate to specific object (identified visually)
         
         # - Navigate to people or predefined places: **{self.loc_options}**
         # - Move to a specific (x,y,z,w,x,y,z) base_position

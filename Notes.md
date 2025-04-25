@@ -26,5 +26,10 @@ To achieve this, robot demonstrate behaviors to remember the events, alayze envi
 
 
 
+---
 
+It should move only when it needs to move, if it can answer from log, dont move
 
+Prompts - ask GPT
+1. How many sticky notes are there in the white board
+2. is there any monitor around here ?
