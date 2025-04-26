@@ -45,52 +45,57 @@ class SimpleMover:
 
 
 if __name__ == '__main__':
-    try:
+    # try:
         mover = SimpleMover()
 
-        # mover.mygello.camera_home()
-        # mover.mygello.camera_turn_up()
-        # time.sleep(2)
-        # mover.mygello.camera_home()
-        # mover.move_forward(0.1, 0.0, 2, False)
-        # mover.move_forward(0.2, 0.0, 3, False)
-        # mover.mygello.camera_turn_up()
-        # mover.move_forward(0.2, -0.3, 3, False)
-        # mover.mygello.camera_home()
-        # mover.move_forward(0.2, 0.0, 3, False)
-        # # manip start
-        # mover.move_forward(0.2, -0.3, 2)
-        # # manip functions
-        # mover.mygello.camera_turn_up()
-        # time.sleep(1)
-        # mover.mygello.camera_turn_upleft()
-        # time.sleep(1)
-        # mover.mygello.dropoff()
-        # time.sleep(1)
-        # mover.mygello.open_gripper()
-        # mover.mygello.dropoff_complete()
-        # mover.mygello.camera_home()
-        # time.sleep(1)
-        # mover.mygello.camera_turn_down()
-        # time.sleep(4)
-        # mover.mygello.camera_home()
+        while rospy.is_shutdown():
+            time_to_act = 2
+            mover.mygello.camera_home()
+            mover.mygello.camera_turn_up()
+            time.sleep(2)
+            mover.mygello.camera_home()
+            # mover.move_forward(0.1, 0.0, time_to_act, False)
+            # mover.move_forward(0.2, 0.0, time_to_act, False)
+            mover.mygello.camera_turn_up()
+            # mover.move_forward(0.2, -0.3, time_to_act, False)
+            mover.mygello.camera_home()
+            mover.move_forward(0.2, 0.0, time_to_act, False)
+            # manip start
+            mover.move_forward(0.0, -0.3, 4, False)
+            # manip functions
+            mover.mygello.camera_turn_up()
+            time.sleep(1)
+            mover.mygello.camera_turn_upleft()
+            time.sleep(1)
+            mover.mygello.dropoff()
+            time.sleep(1)
+            mover.mygello.open_gripper()
+            mover.mygello.dropoff_complete()
+            mover.mygello.camera_home()
+            time.sleep(1)
+            mover.mygello.camera_turn_down()
+            time.sleep(4)
+            mover.mygello.camera_home()
 
+
+        #-----------------------------------------------------------------------------
         # print(mover.status)
 
-        while rospy.is_shutdown():
-            try:
-                if mover.status ==3:
-                    mover.mygello.dropoff()
-                    mover.mygello.open_gripper()
-                    mover.mygello.dropoff_complete()
-                    break
-                else:
-                    time.sleep(1)
+        # while rospy.is_shutdown():
+        #     try:
+        #         if mover.status ==3:
+        #             mover.mygello.dropoff()
+        #             mover.mygello.open_gripper()
+        #             mover.mygello.dropoff_complete()
+        #             break
+        #         else:
+        #             time.sleep(1)
 
-            except rospy.ROSInterruptException:
-                pass
+        #     except rospy.ROSInterruptException:
+        #         pass
 
         # rospy.spin()
+        #-----------------------------------------------------------------------------
 
-    except rospy.ROSInterruptException:
-        pass
+    # except rospy.ROSInterruptException:
+    #     pass
