@@ -9,7 +9,7 @@ from nav_msgs.msg import Odometry
 from mobilegello.gello_controller import GELLOcontroller
 from language import LanguageModels
 from actionlib_msgs.msg import GoalID
-from std_msgs.msg import String, Int32MultiArray
+from std_msgs.msg import String, Int32MultiArray, Float64
 from sensor_msgs.msg import CompressedImage
 import numpy as np
 import cv2
@@ -45,10 +45,11 @@ class HighLevelInference:
         self.task_status = rospy.Publisher('/task_status', String, queue_size=10)
         
         # subscribers
-        rospy.Subscriber('/move_base/status', GoalStatusArray, self.status_callback)           # reading robot status
+        # rospy.Subscriber('/move_base/status', GoalStatusArray, self.status_callback)           # reading robot status
         rospy.Subscriber('/odom', Odometry, self.odom_callback)                                # reading from odom - current position
         rospy.Subscriber('/user_input', String, self.user_query_callback)
         rospy.Subscriber('/askuser', String, self.askuser_callback)
+        rospy.Subscriber('/time_newtask', Float64, self.time_newtask_callback)
 
         # initialize variables
         self.tb_status = 0
@@ -59,13 +60,16 @@ class HighLevelInference:
         # params
         self.vlm_for_gripper = False  # Gripper using vlm to open and close during pickup and drop off
         self.run_high_level = 1
+        self.task_start_time = 0
 
+    def time_newtask_callback(self, data):
+        self.task_start_time = data.data
 
     def odom_callback(self, msg):
         self.current_pose = msg
 
-    def status_callback(self, msg):
-        self.tb_status= msg.status_list[-1].status
+    # def status_callback(self, msg):
+    #     self.tb_status= msg.status_list[-1].status
 
     def user_query_callback(self, data):
         self.user_query_sub = data.data
@@ -100,12 +104,12 @@ class HighLevelInference:
         # query = input("Hello! How can i help :)")
         query = self.user_query_sub
         # Get Keywords
-        keywords = self.llm.generate_and_process_keywords(query)
+        keywords = self.llm.generate_keywords(query)
         print(keywords)
         # Filter Experiences
         self.llm.filter_experiences("memory_files/robot_logs.jsonl", "memory_files/filtered_experiences.jsonl", keywords.split(","))
-        self.llm.get_recent_20_experiences("memory_files/robot_logs.jsonl", "memory_files/recent_experiences.jsonl")
-        """
+        self.llm.get_recent_20_experiences("memory_files/robot_logs.jsonl", "memory_files/recent_experiences.jsonl", newtask_time=self.task_start_time)
+        # """
         # Step 1 Response
         step1_response = self.llm.get_response(user_query=query)
         # print(f"\n{step1_response.plan}")
@@ -123,7 +127,7 @@ class HighLevelInference:
         self.response_plan.publish(str(step1_response.plan))
         self.response_reason.publish(str(step1_response.reason))
         self.sequence.publish(step2_response)
-        """
+        # """
 
 
 
@@ -135,7 +139,7 @@ if __name__=="__main__":
     ch1 = time.time()
     while not rospy.is_shutdown():
         if hlic.run_high_level == 1:
-            if hlic.run_now == 1 or time.time() - ch1 >= 15:
+            if hlic.run_now == 1 or time.time() - ch1 >= 5:
                 ch1 = time.time()
                 print("Thinking...")
                 hlic.run()

@@ -9,6 +9,7 @@ from PIL import Image
 import json
 from typing import List, Dict, Union
 from datetime import datetime, timedelta
+import time
 
 client = OpenAI()
 
@@ -18,8 +19,6 @@ class ReasonResponse(BaseModel):
     reason: str
 
 """ High level thinking - 2nd step """
-
-
 class GripperAction(BaseModel):
     action: int = Field(..., ge=0, le=1, description="0 for open, 1 for close")
     reason: str
@@ -30,7 +29,8 @@ class LanguageModels:
         
         self.logs=""
         self.loc_options = loc_options
-        self.arm_options = ["start_pickup","open_gripper", "complete_pickup","start_dropoff","close_gripper","complete_dropoff"]
+        # self.arm_options = ["start_pickup","open_gripper", "complete_pickup","start_dropoff","close_gripper","complete_dropoff"]
+        self.arm_options = ["start_pickup","complete_pickup","start_dropoff","complete_dropoff"]
 
         # dict contaning functions and things it needs to execute
         self.robots_actions = {
@@ -48,34 +48,34 @@ class LanguageModels:
 
 
     # Convert OpenCV image (frame) to base64
-    def get_encoded_image_logitech(self, rs_image=None):
+    def get_encoded_image_realsense(self, rs_image, target_size=(256, 256), jpeg_quality=70):
         if rs_image is not None:
-            cv2.imwrite("image_rs.jpg", rs_image)
-            _, buffer = cv2.imencode(".jpg", rs_image)  # Encode as JPEG
-            img_base64 = base64.b64encode(buffer).decode("utf-8")  # Convert to base64 string
+            resized_image = cv2.resize(rs_image, target_size, interpolation=cv2.INTER_AREA)
+            encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), jpeg_quality]
+            _, buffer = cv2.imencode(".jpg", resized_image, encode_param)
+            img_base64 = base64.b64encode(buffer).decode("utf-8")
+            
             return img_base64
-        else:
-            self.cap = cv2.VideoCapture(0)  # Open camera at index 1
-            if not self.cap.isOpened():
-                print("Error: Could not open camera.")
-                return None
-            try:
-                while True:
-                    ret, frame = self.cap.read()
-                    if ret:
-                        cv2.imwrite("image_gripper.jpg", frame)
-                        break  # Exit loop once a valid frame is captured
-                _, buffer = cv2.imencode(".jpg", frame)  # Encode as JPEG
-                img_base64 = base64.b64encode(buffer).decode("utf-8")  # Convert to base64 string
-                return img_base64
-            except KeyboardInterrupt:
-                print("\n[INFO] Ctrl+C detected. Exiting gracefully...")
-            finally:
-                self.cap.release()
+        # else:
+        #     self.cap = cv2.VideoCapture(0)  # Open camera at index 1
+        #     if not self.cap.isOpened():
+        #         print("Error: Could not open camera.")
+        #         return None
+        #     try:
+        #         while True:
+        #             ret, frame = self.cap.read()
+        #             if ret:
+        #                 cv2.imwrite("image_gripper.jpg", frame)
+        #                 break  # Exit loop once a valid frame is captured
+        #         _, buffer = cv2.imencode(".jpg", frame)  # Encode as JPEG
+        #         img_base64 = base64.b64encode(buffer).decode("utf-8")  # Convert to base64 string
+        #         return img_base64
+        #     except KeyboardInterrupt:
+        #         print("\n[INFO] Ctrl+C detected. Exiting gracefully...")
+        #     finally:
+        #         self.cap.release()
 
 
-    def get_encoded_image_realsense(self):
-        return 
 
 
     def get_vlm_feedback(self, task, rs_image, question=None):
@@ -84,7 +84,7 @@ class LanguageModels:
             # print(f"Task {task} not in pickup/dropoff for Gripper")
             # return
         # get vlm response
-        encoded_image = self.get_encoded_image_logitech(rs_image=rs_image)  # Convert OpenCV image to base64
+        encoded_image = self.get_encoded_image_realsense(rs_image=rs_image)  # Convert OpenCV image to base64
         
         # Define task-specific instructions
         if task == "pickup":
@@ -119,15 +119,8 @@ class LanguageModels:
             """
         elif task == "caption":
             system_prompt = """
-            You are assisting a robotic mobile manipulator in understanding its environment.
-            From the image provided, generate a brief caption describing:
-            The objects present (including their types, colors, relative sizes, and locations)
-            Any people or animals in the scene and their activities or interactions
-            The layout or structure of the environment.
-            Any actions or events taking place
-            Possible affordances or interactions the robot could perform with objects
-            Relevant semantic context that would help the robot remember or reason about this scene later
-            Be concise, yet include all important observations that would help a robot perceive, remember, and act in this environment.
+            You are assisting a robotic mobile manipulator in understanding its environment. Make short and concise caption that would help the robot remember or reason about this scene later.
+            Describe objects (type, color, size, location), people/animals (actions), environment structure, ongoing events, possible robot interactions, and key semantic info for memory. Be concise.
             """
 
         elif task == "caption_2":
@@ -186,8 +179,8 @@ class LanguageModels:
                 {
                     "role": "system",
                     "content": f"""
-        You are a task planner for a **mobile manipulator robot assistant** that helps users in a shared workspace.
-        You need to keep planning and executing tasks based on user queries, robot experiences, and progress.
+        You are a brain for a **mobile manipulator robot assistant** that helps users in a shared workspace.
+        You need to keep helping users, planning and executing tasks based on user queries, robot experiences, and progress.
         The robot has memory, vision, and manipulation abilities, and it continuously logs its experiences and you should plan further.
         ---
         ### Robot Memory
@@ -209,20 +202,21 @@ class LanguageModels:
         - Navigate to only these people: **{self.loc_options}**
         - Move to a specific position (x,y,z,w,x,y,z) base_position
 
-        - Use its manipulator to pick/place objects and has only options to **{self.arm_options}**
-            - to pick it can start_pickup, then, close_gripper, and it performs complete_pickup
-            - to pick it can start_dropoff, then, open_gripper, and, it performs complete_dropoff
+        - Use its manipulator to pick/place small objects and has only options to **{self.arm_options}**. Its gripper is small and only can carry objects like pens, ball, cup and similar objects of sizes and weight.
+            - to pick it can start_pickup, then, it performs complete_pickup
+            - to pick it can start_dropoff, it performs complete_dropoff
         - Robot sees through the camera on it. Capture images and return what you want to know about it
-        - Communicate with users and ask for clarifications
+        - Communicate with users. You can ask questions, ask for help, tell anything and more.
         - Wait/idle stopping everything that you are doing
         ---
         ### Your Objective
         Given a **user query**, **current task logs**, and **Memory** your job is to:
         1. Understand the user's intent and task progress, **if any**.
         2. Review the robot's memory to inform your response.
-        3. Generate a descriptive plan based on what user needs, and what progress robot has completed, for the robot to execute, using its abilities and progress.
+        3. Goal is to understand user query and do as neeed, if robot needs to move, Generate a descriptive plan based on what user needs, and what progress robot has completed, for the robot to execute, using its abilities and progress.
+        4. Remember that if you can answer user input just from the thr info you have, you can just answer it without any robot action. You should only move and utilize functions when its needed.
         ---
-        -Respond with a plan that robot should further implement, and a reason why the plan should work.
+        -Respond with a plan that robot should further implement, and a reason why the plan should work. 
         ---
         """
                 },
@@ -502,7 +496,7 @@ class LanguageModels:
 
 
 
-    def get_recent_20_experiences(self, input_file, output_file, time_window_minutes=5, max_experiences=20):
+    def get_recent_20_experiences(self, input_file, output_file, time_window_minutes=5, max_experiences=20, newtask_time = None):
         """
         Collects the last up to `max_experiences` experiences from the log file,
         only if they are within `time_window_minutes` of the latest timestamp.
@@ -512,6 +506,10 @@ class LanguageModels:
         :param time_window_minutes: Only include experiences from the last N minutes.
         :param max_experiences: Max number of recent experiences to include.
         """
+        if newtask_time:
+            time_window_minutes = min((time.time() - newtask_time)/60, time_window_minutes)
+            # print(time_window_minutes)
+            # print((time.time() - newtask_time)/60)
         all_experiences = []
 
         # First pass: load all valid timestamped experiences
@@ -536,8 +534,9 @@ class LanguageModels:
             return
 
         # Find the latest timestamp
-        latest_time = max(exp["__parsed_timestamp"] for exp in all_experiences)
-        cutoff_time = latest_time - timedelta(minutes=time_window_minutes)
+        # latest_time = max(exp["__parsed_timestamp"] for exp in all_experiences)
+        current_time = datetime.now()
+        cutoff_time = current_time - timedelta(minutes=time_window_minutes)
 
         # Go from end, collecting only those within the cutoff time
         recent_experiences = []

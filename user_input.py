@@ -9,7 +9,7 @@ from nav_msgs.msg import Odometry
 from mobilegello.gello_controller import GELLOcontroller
 from language import LanguageModels
 from actionlib_msgs.msg import GoalID
-from std_msgs.msg import String, Int32MultiArray, Bool
+from std_msgs.msg import String, Int32MultiArray, Bool, Float64
 from sensor_msgs.msg import CompressedImage
 import numpy as np
 import cv2
@@ -28,6 +28,7 @@ class UserInputNode:
         # Initialize publishers
         self.input_pub = rospy.Publisher('/user_input', String, queue_size=10)
         self.task_status_pub = rospy.Publisher('/task_status', String, queue_size=10)
+        self.time_newtask_pub = rospy.Publisher('/time_newtask', Float64, queue_size=10)
         # self.askuser_pub = rospy.Publisher('/askuser', String, queue_size=10)  # to ask user for input
 
         # subscribers
@@ -53,6 +54,9 @@ class UserInputNode:
 if __name__ == '__main__':
     try:
         UI = UserInputNode()
+        time.sleep(2)
+        current_time = time.time()
+        UI.time_newtask_pub.publish(Float64(data=current_time))
         rate = rospy.Rate(10)  # 10 Hz
         while not rospy.is_shutdown():
             if UI.askuser_trigger:

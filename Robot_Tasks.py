@@ -190,42 +190,34 @@ class RobotTasks:
         Output: Manipulator moves
         '''
         self.active_server = "arm"
-        print(f"Arm is {state}")
+        print(f"Arm {state}")
 
-        # self.task_status_pub.publish("running")
-        
-        if state == "start_pickup":
-            self.mygello.pickup()
-            # while self.vlm_for_gripper: # only uses vlm to complete pickup, is this param=1
-            #     if self.llm.get_vlm_feedback(state)==1:
-            #         break
-            #     time.sleep(0.5)
-            # self.mygello.pickup_complete()
+        if not self.mygello.is_near_target(state):
+            self.task_status_pub.publish("running")
 
-        elif state == "close_gripper":
-            self.mygello.close_gripper()
-
-        elif state == "complete_pickup":
-            self.mygello.pickup_complete()
-
-        elif state == "start_dropoff":
-            self.mygello.dropoff()
-            # while self.vlm_for_gripper: # only uses vlm to complete pickup, is this param=1
-            #     if self.llm.get_vlm_feedback(state)==1:
-            #         break
-            #     time.sleep(0.5)
-            # self.mygello.dropoff_complete()
-
-        elif state == "open_gripper":
-            self.mygello.open_gripper()
-
-        elif state == "complete_dropoff":
-            self.mygello.dropoff_complete()
+            if state == "start_pickup":
+                self.mygello.pickup()
+                # while self.vlm_for_gripper: # only uses vlm to complete pickup, is this param=1
+                #     if self.llm.get_vlm_feedback(state)==1:
+                #         break
+                #     time.sleep(0.5)
+                # self.mygello.pickup_complete()
+            elif state == "complete_pickup":
+                self.mygello.pickup_complete()
+            elif state == "start_dropoff":
+                self.mygello.dropoff()
+                # while self.vlm_for_gripper: # only uses vlm to complete pickup, is this param=1
+                #     if self.llm.get_vlm_feedback(state)==1:
+                #         break
+                #     time.sleep(0.5)
+                # self.mygello.dropoff_complete()
+            elif state == "complete_dropoff":
+                self.mygello.dropoff_complete()
 
 
         self.task_status_pub.publish("completed")
         # self.sequence=" "
-        time.sleep(4)
+        # time.sleep(4)
 
     def ask_user(self, data:str):
         '''
@@ -233,7 +225,6 @@ class RobotTasks:
         Output: Asks user
         '''
         # this ask user thing should go to main input
-        # user_response = input(f"Hey user: {data}")
         # publish to use input, and break this code
         self.task_status_pub.publish("running")
         self.askuser_pub.publish(data)

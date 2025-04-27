@@ -12,6 +12,7 @@ from cv_bridge import CvBridge
 import cv2
 import numpy as np
 from geometry_msgs.msg import PoseWithCovarianceStamped
+import ast
 
 class MemoryNode:
 
@@ -47,6 +48,7 @@ class MemoryNode:
         self.loc_options = ["ruthwik", "zahir", "amisha", "kasra", "home"]
         self.arm_options = ["start_pickup","complete_pickup","start_dropoff","complete_dropoff"]
         self.image = None
+        self.last_amcl_entry = "0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0"
 
         self.generate_captions = True
 
@@ -134,12 +136,9 @@ class MemoryNode:
 
     def get_log(self, type):
 
+        # zeros last_amcl_entry
         log = {}
         if type == "status":
-                    # Check if last_amcl_entry exists
-            if not hasattr(self, 'last_amcl_entry'):
-                self.last_amcl_entry = self.amcl_entry  # First call
-
             # Timestamp
             log["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             log["type"] = "status"
@@ -161,8 +160,11 @@ class MemoryNode:
             # }
             # Camera Observation
             # try:
-            if self.image is not None and self.generate_captions is True and self.has_moved(self.last_amcl_entry, self.amcl_entry):
-                log["camera_observation"] = self.llm.get_vlm_feedback(task="caption", rs_image=self.image)
+            if self.image is not None and self.generate_captions is True:
+                # if self.has_moved(self.last_amcl_entry, self.amcl_entry):
+                self.prev_caption = self.llm.get_vlm_feedback(task="caption", rs_image=self.image)
+                log["camera_observation"] = self.prev_caption
+                
             else:
                 log["camera_observation"] = " "
             # except Exception as e:
@@ -212,8 +214,8 @@ if __name__ == '__main__':
             log = mem_node.get_log(type="status")
             print(json.dumps(log, indent=4))
             mem_node.save_logs(log)
-            # if mem_node.image is None:
-            time.sleep(2)
+            if mem_node.image is None:
+                time.sleep(2)
             # break
     # except rospy.ROSInterruptException:
     #     break
