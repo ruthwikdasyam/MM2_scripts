@@ -113,10 +113,33 @@ class MemoryNode:
         np_arr = np.frombuffer(msg.data, np.uint8)
         self.image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
+    def parse_amcl_entry(self, entry_str):
+        try:
+            return [float(x) for x in ast.literal_eval(entry_str)]
+        except Exception:
+            return []
+
+    def has_moved(self, prev_entry, current_entry, threshold=0.01):
+        prev = self.parse_amcl_entry(prev_entry)
+        current = self.parse_amcl_entry(current_entry)
+
+        if len(prev) != len(current):
+            return True  # Something changed structurally
+
+        for p, c in zip(prev, current):
+            if abs(p - c) > threshold:
+                return True  # Movement detected
+        return False  # No meaningful movement
+
+
     def get_log(self, type):
 
         log = {}
         if type == "status":
+                    # Check if last_amcl_entry exists
+            if not hasattr(self, 'last_amcl_entry'):
+                self.last_amcl_entry = self.amcl_entry  # First call
+
             # Timestamp
             log["timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             log["type"] = "status"
@@ -138,7 +161,7 @@ class MemoryNode:
             # }
             # Camera Observation
             # try:
-            if self.image is not None and self.generate_captions is True:
+            if self.image is not None and self.generate_captions is True and self.has_moved(self.last_amcl_entry, self.amcl_entry):
                 log["camera_observation"] = self.llm.get_vlm_feedback(task="caption", rs_image=self.image)
             else:
                 log["camera_observation"] = " "
@@ -151,6 +174,7 @@ class MemoryNode:
                 "task_status": self.task_status
             }
             # Return the log as a JSON string
+            self.last_amcl_entry = self.amcl_entry  # Update for next time
             return log
         
         elif type == "llm":

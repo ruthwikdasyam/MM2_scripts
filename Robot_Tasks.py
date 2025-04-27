@@ -48,7 +48,7 @@ class RobotTasks:
         self.arm_options = ["start_pickup","complete_pickup","start_dropoff","complete_dropoff"]
         
         # Instantiating
-        # self.mygello = GELLOcontroller("doodle", torque_start=True)
+        self.mygello = GELLOcontroller("doodle", torque_start=True)
         self.llm = LanguageModels()
 
         # publishers
@@ -191,7 +191,8 @@ class RobotTasks:
         '''
         self.active_server = "arm"
         print(f"Arm is {state}")
-        self.task_status_pub.publish("running")
+
+        # self.task_status_pub.publish("running")
         
         if state == "start_pickup":
             self.mygello.pickup()

@@ -100,12 +100,12 @@ class HighLevelInference:
         # query = input("Hello! How can i help :)")
         query = self.user_query_sub
         # Get Keywords
-        keywords = self.llm.generate_keywords(query)
+        keywords = self.llm.generate_and_process_keywords(query)
         print(keywords)
         # Filter Experiences
         self.llm.filter_experiences("memory_files/robot_logs.jsonl", "memory_files/filtered_experiences.jsonl", keywords.split(","))
         self.llm.get_recent_20_experiences("memory_files/robot_logs.jsonl", "memory_files/recent_experiences.jsonl")
-
+        """
         # Step 1 Response
         step1_response = self.llm.get_response(user_query=query)
         # print(f"\n{step1_response.plan}")
@@ -123,7 +123,7 @@ class HighLevelInference:
         self.response_plan.publish(str(step1_response.plan))
         self.response_reason.publish(str(step1_response.reason))
         self.sequence.publish(step2_response)
-
+        """
 
 
 

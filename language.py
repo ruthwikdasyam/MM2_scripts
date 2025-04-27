@@ -2,8 +2,8 @@ from pydantic import BaseModel, Field
 from openai import OpenAI
 from typing import List
 from dataclasses import dataclass, field
-import cv2
 import base64
+import cv2
 import io
 from PIL import Image
 import json
@@ -37,8 +37,8 @@ class LanguageModels:
             "navigate_to_person":[f"one person_name from {self.loc_options} only"],
             "navigate_to_position":["x","y","z","w1","w2","w3","w4"],
             "manipulate":[f"one function_name from {self.arm_options} only"],
-            "get_image_caption":["prompt on what you want to know"],
-            "ask_user":["question"],
+            "get_image_caption":["prompt on what you want to know from what robot sees"],
+            "ask_user":["whatever you wanna ask or tell"],
             "wait":[],
         }
     
@@ -412,7 +412,9 @@ class LanguageModels:
                             The goal is to retrieve all experiences that are possibly relevant to the user query's intent. Extract keywords that include task-related terms, as well as related synonyms,
                             Be exhaustive to ensure broad matching.\n
                             User query: '{user_query}'\n\n
-                            Provide only a comma-separated list of keywords and phrases, without any explanation
+                            Provide only a comma-separated list of keywords, without any explanation.
+                            But make sure you dont generate dublicate and overly common words. Need to keep number of keywords to a minimum in range of 10 - 20.
+                            Return them in the order of priority, less common and important keywords first.
                             """
             }],
             temperature=0.5
@@ -421,6 +423,35 @@ class LanguageModels:
         keywords = response.choices[0].message.content
         return keywords
     
+
+    # def process_keywords(keywords_raw, max_keywords=15, min_length=3, common_words=None):
+    #     """
+    #     Processes and limits keywords to improve matching performance.
+
+    #     :param keywords_raw: Raw comma-separated string of keywords (output of GPT-4o)
+    #     :param max_keywords: Maximum number of keywords to keep
+    #     :param min_length: Minimum length of keyword to be kept
+    #     :param common_words: Set of overly common words to filter out
+    #     :return: List of cleaned, limited keywords
+    #     """
+    #     if common_words is None:
+    #         # Define some generic common words you might want to skip
+    #         common_words = {"object", "thing", "item", "room", "area", "place", "something"}
+
+    #     # Step 1: Split, strip, and lowercase
+    #     keywords = [kw.strip().lower() for kw in keywords_raw.split(",")]
+
+    #     # Step 2: Remove too-short keywords and common words
+    #     keywords = [kw for kw in keywords if len(kw) >= min_length and kw not in common_words]
+
+    #     # Step 3: Deduplicate
+    #     keywords = list(dict.fromkeys(keywords))  # Preserves order while removing duplicates
+
+    #     # Step 4: Limit the number of keywords
+    #     if len(keywords) > max_keywords:
+    #         keywords = keywords[:max_keywords]
+
+    #     return keywords
 
 
     def filter_experiences(self, input_file, output_file, keywords):
@@ -432,6 +463,7 @@ class LanguageModels:
         :param keywords: A list of keywords to filter experiences.
         """
         filtered_experiences = []
+        limit = 100
 
         with open(input_file, "r") as infile:
             for line in infile: 
@@ -455,8 +487,11 @@ class LanguageModels:
 
                 # Check if any keyword appears in the text fields
                 if any(keyword.lower() in " ".join(text_fields).lower() for keyword in keywords):
-                    filtered_experiences.append(experience)
-
+                    # Limit the number of experiences to 100
+                    if len(filtered_experiences) < limit:
+                        filtered_experiences.append(experience)
+                    else:
+                        break
         # Save the filtered experiences to a new JSONL file
         with open(output_file, "w") as outfile:
             for exp in filtered_experiences:
@@ -522,11 +557,13 @@ class LanguageModels:
         print(f"Collected {len(recent_experiences)} recent experiences")
 
 
-    # def get_response_with_memory(self):
-        # query = input("Hey, how can I help you?\n")
-        # keywords = self.generate_keywords(query)
-        # print(f"\nExtracted Keywords: {keywords}")
-        # self.filter_experiences("memory_files/robot_logs.jsonl", "memory_files/filtered_experiences.jsonl", keywords.split(","))
+    def get_response_with_memory(self):
+        query = input("Hey, how can I help you?\n")
+        keywords = self.generate_keywords(query)
+        print(f"\nExtracted Keywords: {keywords}")
+        self.filter_experiences("memory_files/robot_logs.jsonl", "memory_files/filtered_experiences.jsonl", keywords.split(","))
+        self.get_recent_20_experiences("memory_files/robot_logs.jsonl", "memory_files/recent_experiences.jsonl")
+
         # response = self.get_response(user_query=query)
         # print(f"\n{response.plan}")
         # print(f"\n{response.reason}")
@@ -561,6 +598,4 @@ if __name__ == "__main__":
     #     print(f"Step {i}: {step['action']}, = {step['parameter']}")
     
     
-    # publish info
-
-    llm.get_recent_20_experiences("memory_files/robot_logs.jsonl", "memory_files/recent_experiences.jsonl")
+    llm.get_response_with_memory()
