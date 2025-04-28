@@ -23,6 +23,7 @@ class MemoryNode:
         rospy.Subscriber('/subtask', String, self.task_name_callback)
         rospy.Subscriber('/parameter', String, self.parameter_callback)
         rospy.Subscriber('/task_status', String, self.task_status_callback)
+        rospy.Subscriber('/task_info', String, self.task_info_callback)
 
         rospy.Subscriber('/user_input', String, self.user_query_callback)
         rospy.Subscriber('/response_plan', String, self.response_plan_callback)
@@ -49,6 +50,7 @@ class MemoryNode:
         self.arm_options = ["start_pickup","complete_pickup","start_dropoff","complete_dropoff"]
         self.image = None
         self.last_amcl_entry = "0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0"
+        self.task_info_sub = " "
 
         self.generate_captions = True
 
@@ -82,6 +84,9 @@ class MemoryNode:
     
     def task_status_callback(self, data):
         self.task_status = data.data
+
+    def task_info_callback(self, data):
+        self.task_info_sub = data.data
     
     def odom_callback(self, msg):
         # Extract position (x, y, z)
@@ -173,7 +178,8 @@ class MemoryNode:
             log["task_progress"] = {
                 "task_name": self.task_name,
                 "parameter": self.parameter,
-                "task_status": self.task_status
+                "task_status": self.task_status,
+                "task_info": self.task_info_sub
             }
             # Return the log as a JSON string
             self.last_amcl_entry = self.amcl_entry  # Update for next time
@@ -208,7 +214,6 @@ class MemoryNode:
 if __name__ == '__main__':
     # try:
         mem_node = MemoryNode()
-
         while not rospy.is_shutdown():
             print("----------------------------------------------------------------------")
             log = mem_node.get_log(type="status")

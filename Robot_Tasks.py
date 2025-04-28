@@ -60,6 +60,7 @@ class RobotTasks:
         self.parameter_pub = rospy.Publisher('/parameter', String, queue_size=10)                # publishes current task name
         self.askuser_pub = rospy.Publisher('/askuser', String, queue_size=10)  # to ask user for input
         self.user_input_pub = rospy.Publisher('/user_input', String, queue_size=10)
+        self.task_info_pub = rospy.Publisher('/task_info', String, queue_size=10)
 
 
         # subscribers
@@ -71,7 +72,7 @@ class RobotTasks:
 
         # Initialize variables
         self.sequence = ""
-        self.possible_tasks = ["navigate_to_person", "navigate_to_position", "navigate_to_object", "get_image_caption", "manipulate", "ask_user"]
+        self.possible_tasks = ["navigate_to_person", "navigate_to_position", "navigate_to_object", "get_image_caption", "manipulate", "ask_user", "wait"]
         self.vlm_for_gripper = 0
 
         self.active_server = "" #["movebase","arm"]
@@ -91,6 +92,7 @@ class RobotTasks:
 
     def status_callback(self, msg):
         self.tb_status= msg.status_list[-1].status
+        self.tb_feedback = msg.status_list[-1].text
 
     def task_status_callback(self, data):
         self.task_status = data.data
@@ -107,6 +109,7 @@ class RobotTasks:
         position = pose_data['position']
         orientation = pose_data['orientation']
         covariance = parsed_data['covariance']
+
         # Create a PoseWithCovarianceStamped message
         pose_msg = PoseWithCovarianceStamped()
         pose_msg.pose.pose = Pose(
@@ -169,19 +172,14 @@ class RobotTasks:
 
 
     def navigate_to_object(self, object_name: str):
-        '''
-        Input: object_name {str}
-        Ouput: Robot moves with visual navigation
-        '''
         self.active_server = "movebase"
 
     def get_image_caption(self, data):
-        '''
-        Output: Caption for image {str}
-        '''
-        self.task_status_pub.publish("running")
+
+        # self.task_status_pub.publish("running")
         response = self.llm.get_vlm_feedback(task="caption_2", rs_image=self.image, question=data)
-        # self.user_input_pub.publish(response)
+
+        self.task_info_pub.publish(response)
         self.task_status_pub.publish("completed")
 
     def manipulate(self, state: str):
@@ -214,7 +212,6 @@ class RobotTasks:
             elif state == "complete_dropoff":
                 self.mygello.dropoff_complete()
 
-
         self.task_status_pub.publish("completed")
         # self.sequence=" "
         # time.sleep(4)
@@ -232,7 +229,7 @@ class RobotTasks:
         self.sequence = ""
 
 
-    def wait(self):
+    def wait(self, dummy=" "):
         '''
         Output: Stops everything and waits
         '''
@@ -259,12 +256,12 @@ if __name__ == "__main__":
             # for step in seq["steps"]:
             step = seq["steps"][0]
 
-            try:
-                if current_task == step["task"] and current_param == step["parameter"] and coco.task_status == "completed":
-                    step = seq["steps"][1]
-            except:
-                pass
-
+            # try:
+            #     if current_task == step["task"] and current_param == step["parameter"] and coco.task_status == "completed":
+            #         step = seq["steps"][1]
+            # except:
+            #     pass
+            # coco.task_info_pub.publish(" ")
             print(step)
             if step["task"] in coco.possible_tasks:
                 coco.subtask_pub.publish(step["task"])
@@ -273,20 +270,24 @@ if __name__ == "__main__":
                 getattr(coco, step["task"])(step["parameter"])  # Call the method dynamically
                 
                 if coco.active_server == "movebase":
+                    coco.task_info_pub.publish(coco.tb_feedback)
                     if coco.tb_status == 3:
                         coco.task_status_pub.publish("completed")
                     else:
                         coco.task_status_pub.publish("running")
 
-                current_task = step["task"]
-                current_param = step["parameter"]
-
-                # elif coco.active_server == "arm":
+                elif coco.active_server == "arm":
+                    coco.task_info_pub.publish(" ")
                 #     if coco.arm_status == 3:
                 #         coco.task_status_pub.publish("completed")
                 #     else:
                 #         coco.task_status_pub.publish("running")
-    
+
+                # current_task = step["task"]
+                # current_param = step["parameter"]
+
+                
+
             else:
                 print(f"Unknown task: {step['task']}")
                 coco.user_input_pub.publish(f"Unknown task: {step['task']}")

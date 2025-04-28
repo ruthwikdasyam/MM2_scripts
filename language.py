@@ -195,7 +195,7 @@ class LanguageModels:
         ---
         ### Robot Logs
         You also have access to its current logs, which is recent robot logs on the task its running.
-        Use this to check "task_status" and understand the progress and plan further, if progressed. Here are current logs {self.recent_experiences}
+        Use this to check 'task_info' to get task related information, and "task_status" to understand the progress and plan further, if progressed. Here are current logs {self.recent_experiences}
         ---
         ### Robot Capabilities
         The robot can:
@@ -330,7 +330,7 @@ class LanguageModels:
                     "role": "system",
                     "content": f"""
                     You are generating a sequence of tasks for the mobile manipulator robot should perform.
-                    An assistant has generated a plan that robot should further perform for the robot to follow based on these robots relavant previous experiences {self.filtered_experiences} and current task logs {self.recent_experiences}.
+                    An assistant has generated a plan that robot should further perform for the robot to follow
                     Your job is to generate the task sequence with appropriate parameters, that robot should futher perform which should be in {self.robots_actions}.
                     Make sure to define the parameters required for each task. You are allowed to directly use the base_position and arm_position from the robot's status in the previous experience if you plan to navigate to that specific location.
                     Respond with a JSON format only.
@@ -341,6 +341,7 @@ class LanguageModels:
                     "content": f"Robots plan: {plan} Reason: {reason}."
                 }
             ],
+            #  based on these robots relavant previous experiences {self.filtered_experiences} and current task logs {self.recent_experiences}.
             # response_format=task_sequence_schema,  # key part!
             # schema=task_sequence_schema   # NOT `response_format_schema`
             response_format={
@@ -467,9 +468,10 @@ class LanguageModels:
                     # Extract relevant fields for keyword matching
                     text_fields = [
                         experience["camera_observation"],
-                        experience["task_progress"]["task_name"],
-                        experience["task_progress"]["parameter"],
-                        experience["task_progress"]["task_status"]
+                        # experience["task_progress"]["task_name"],
+                        # experience["task_progress"]["parameter"],
+                        # experience["task_progress"]["task_status"],
+                        experience["task_progress"]["task_info"]
                     ]
                 elif experience["type"]=="llm":
                     text_fields = [

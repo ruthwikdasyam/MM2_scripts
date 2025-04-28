@@ -21,7 +21,6 @@ class UserInputNode:
         rospy.init_node('user_input_node', anonymous=True)
 
         # Initialize variables
-
         # Initialize language model
         # self.llm = LanguageModels(loc_options=self.loc_options, arm_options=self.arm_options)
 
@@ -30,7 +29,7 @@ class UserInputNode:
         self.task_status_pub = rospy.Publisher('/task_status', String, queue_size=10)
         self.time_newtask_pub = rospy.Publisher('/time_newtask', Float64, queue_size=10)
         # self.askuser_pub = rospy.Publisher('/askuser', String, queue_size=10)  # to ask user for input
-
+        self.task_info_pub = rospy.Publisher('/task_info', String, queue_size=10)
         # subscribers
         rospy.Subscriber('/askuser', String, self.askuser_callback)     # reading robot status
         self.askuser_trigger = False
@@ -43,9 +42,9 @@ class UserInputNode:
 
     def publish_user_input(self):
         # Get user input
-        input_text = input("Enter your command: ")
+        self.input_text = input("Enter your command: ")
         # Publish the user input
-        self.input_pub.publish(input_text)
+        self.input_pub.publish(self.input_text)
         # Sleep for a bit to ensure the message is sent
         rospy.sleep(0.1)
         return
@@ -61,8 +60,8 @@ if __name__ == '__main__':
         while not rospy.is_shutdown():
             if UI.askuser_trigger:
                 UI.askuser_trigger = False
-                # rospy.loginfo(f"Published askuser: {UI.askuser_sub}")
-                UI.publish_user_input()
+                UI.task_info_pub.publish(UI.input_text)
+                # UI.publish_user_input()
                 UI.task_status_pub.publish("completed")
             else:
                 # rospy.loginfo(f"Published askuser: {UI.askuser_sub}")
