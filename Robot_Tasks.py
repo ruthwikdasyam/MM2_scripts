@@ -19,6 +19,8 @@ import rospy
 import tf2_ros
 import tf2_geometry_msgs
 from geometry_msgs.msg import PoseStamped
+import actionlib
+from approach_object.msg import ObjectNavAction, ObjectNavGoal
 
 """
 Functions to include
@@ -33,6 +35,28 @@ Functions to include
 "wait":[],
 
 """
+
+# def feedback_cb(feedback):
+#     rospy.loginfo(f"Feedback: {feedback.status}")
+# def object_nav_client():
+#     rospy.init_node('object_nav_client')
+#     rospy.loginfo("Waiting for action server to start...")
+#     client.wait_for_server()
+#     rospy.loginfo("Action server started, sending goal.")
+
+    # Create and send goal
+    # goal = ObjectNavGoal()
+    # goal.object_names = ["bottle", "cup"]  # Replace with desired object names
+    # client.send_goal(goal, feedback_cb=feedback_cb)
+    # rospy.loginfo("Goal sent. Waiting for result...")
+    # client.wait_for_result()
+    # result = client.get_result()
+    # rospy.loginfo(f"Result: success={result.success}, message='{result.message}'")
+# if __name__ == '__main__':
+#     try:
+#         object_nav_client()
+#     except rospy.ROSInterruptException:
+#         pass
 
 
 class RobotTasks:
@@ -61,6 +85,11 @@ class RobotTasks:
         self.askuser_pub = rospy.Publisher('/askuser', String, queue_size=10)  # to ask user for input
         self.user_input_pub = rospy.Publisher('/user_input', String, queue_size=10)
         self.task_info_pub = rospy.Publisher('/task_info', String, queue_size=10)
+        # self.object_nav = rospy.Publisher('/objectnav/goal', ObjectNavActionGoal, queue_size=10)
+        self.objectnav_client = actionlib.SimpleActionClient('objectnav', ObjectNavAction)
+        self.objectnav_client.wait_for_server()
+        self.objectnav_goal = ObjectNavGoal()
+
 
 
         # subscribers
@@ -82,7 +111,7 @@ class RobotTasks:
     def sequence_callback(self, msg):
         self.sequence = msg
         # print(self.sequence)
-        self.task_status_pub.publish(" ")
+        # self.task_status_pub.publish(" ")
 
     def input_callback(self,msg):
         self.user_input = msg
@@ -121,15 +150,9 @@ class RobotTasks:
         pose_msg.header.stamp = rospy.Time.now()
         return pose_msg
     
-
-    def check_status(self):
-        '''
-        Output: status of robot {int}
-        '''
-        pass    
-
+    def feedback_cb(self, feedback):
+        rospy.loginfo(f"Feedback: {feedback.status}")
         
-
     # PUBLIC METHODS
     def navigate_to_person(self, name: str):
         '''
@@ -152,13 +175,11 @@ class RobotTasks:
         Ouput: Robot moves
         '''
         coordinate = tuple(ast.literal_eval(coordinate))
-        
         self.active_server = "movebase"
         # print(f"coordinate {coordinate}. {type(coordinate)}")
         # check for format and limits
         assert len(coordinate) == 7, "Coordinate should be a tuple of length 7"
         # assert all(isinstance(i, (int, float)) for i in coordinate), "All elements should be int or float"
-
         goal = PoseStamped()
         goal.header.frame_id = "map"
         goal.header.stamp = rospy.Time.now()
@@ -173,14 +194,16 @@ class RobotTasks:
 
     def navigate_to_object(self, object_name: str):
         self.active_server = "movebase"
+        self.objectnav_goal.object_names = [object_name]  # Replace with desired object names
+        self.objectnav_client.send_goal(self.objectnav_goal)
+
 
     def get_image_caption(self, data):
-
         # self.task_status_pub.publish("running")
         response = self.llm.get_vlm_feedback(task="caption_2", rs_image=self.image, question=data)
-
         self.task_info_pub.publish(response)
         self.task_status_pub.publish("completed")
+
 
     def manipulate(self, state: str):
         '''
@@ -234,8 +257,8 @@ class RobotTasks:
         Output: Stops everything and waits
         '''
         self.cancel_pub.publish(GoalID())
+        self.task_info_pub.publish(" ")
         self.sequence = ""
-
 
     
 
@@ -247,51 +270,51 @@ if __name__ == "__main__":
     # assert coco.sequence != "", "No sequence received"
     print(f"Sequence: {coco.sequence}")
 
-    while not rospy.is_shutdown():
-        if coco.sequence != "":
-            coco.active_server = ""
-            # Parse the JSON string
-            seq = json.loads(coco.sequence.data)
-            # Loop through the list of steps inside the "steps" key
-            # for step in seq["steps"]:
-            step = seq["steps"][0]
+    # while not rospy.is_shutdown():
+        # if coco.sequence != "":
+        #     coco.active_server = ""
+        #     # Parse the JSON string
+        #     seq = json.loads(coco.sequence.data)
+        #     # Loop through the list of steps inside the "steps" key
+        #     # for step in seq["steps"]:
+        #     step = seq["steps"][0]
 
-            # try:
-            #     if current_task == step["task"] and current_param == step["parameter"] and coco.task_status == "completed":
-            #         step = seq["steps"][1]
-            # except:
-            #     pass
-            # coco.task_info_pub.publish(" ")
-            print(step)
-            if step["task"] in coco.possible_tasks:
-                coco.subtask_pub.publish(step["task"])
-                coco.parameter_pub.publish(step["parameter"])
+        #     # try:
+        #     #     if current_task == step["task"] and current_param == step["parameter"] and coco.task_status == "completed":
+        #     #         step = seq["steps"][1]
+        #     # except:
+        #     #     pass
+        #     # coco.task_info_pub.publish(" ")
+        #     print(step)
+        #     if step["task"] in coco.possible_tasks:
+        #         coco.subtask_pub.publish(step["task"])
+        #         coco.parameter_pub.publish(step["parameter"])
                 
-                getattr(coco, step["task"])(step["parameter"])  # Call the method dynamically
+        #         getattr(coco, step["task"])(step["parameter"])  # Call the method dynamically
                 
-                if coco.active_server == "movebase":
-                    coco.task_info_pub.publish(coco.tb_feedback)
-                    if coco.tb_status == 3:
-                        coco.task_status_pub.publish("completed")
-                    else:
-                        coco.task_status_pub.publish("running")
+        #         if coco.active_server == "movebase":
+        #             coco.task_info_pub.publish(coco.tb_feedback)
+        #             if coco.tb_status == 3:
+        #                 coco.task_status_pub.publish("completed")
+        #             else:
+        #                 coco.task_status_pub.publish("running")
 
-                elif coco.active_server == "arm":
-                    coco.task_info_pub.publish(" ")
-                #     if coco.arm_status == 3:
-                #         coco.task_status_pub.publish("completed")
-                #     else:
-                #         coco.task_status_pub.publish("running")
+        #         elif coco.active_server == "arm":
+        #             coco.task_info_pub.publish(" ")
+        #         #     if coco.arm_status == 3:
+        #         #         coco.task_status_pub.publish("completed")
+        #         #     else:
+        #         #         coco.task_status_pub.publish("running")
 
-                # current_task = step["task"]
-                # current_param = step["parameter"]
+        #         # current_task = step["task"]
+        #         # current_param = step["parameter"]
 
                 
 
-            else:
-                print(f"Unknown task: {step['task']}")
-                coco.user_input_pub.publish(f"Unknown task: {step['task']}")
-        time.sleep(1)
+        #     else:
+        #         print(f"Unknown task: {step['task']}")
+        #         coco.user_input_pub.publish(f"Unknown task: {step['task']}")
+        # time.sleep(1)
 
     # coco.wait()
     # coco.navigate_to_person('zahir')
@@ -299,3 +322,4 @@ if __name__ == "__main__":
     # coco.navigate_to_position('6.836892185164943, 5.983559917708442, 0.0, 0.0, 0.0, 0.12264594311087945, 0.9924504887592343')
     # coco.navigate_to_position('-2.8, 6.3, 0.0, 0.0, 0.0, 0.5, 0.8')
 
+    coco.navigate_to_object("potted plant")
