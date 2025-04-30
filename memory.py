@@ -200,6 +200,7 @@ class MemoryNode:
 
 
     def save_logs(self, log):
+        # log_file = "memory_files/robot_logs.jsonl"  # JSONL (JSON Lines) format for continuous logging
         log_file = "memory_files/robot_logs.jsonl"  # JSONL (JSON Lines) format for continuous logging
         try:
             json_line = json.dumps(log) 

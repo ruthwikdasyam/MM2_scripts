@@ -36,8 +36,9 @@ class LanguageModels:
         self.robots_actions = {
                     "navigate_to_person":[f"one person_name from {self.loc_options} only"],
                     "navigate_to_position":["x","y","z","w1","w2","w3","w4"],
+                    "navigate_to_object": ["Go to object that robot can currently see"],
                     "manipulate":[f"one function_name from {self.arm_options} only"],
-                    "get_image_caption":["prompt on what you want to know from what robot sees"],
+                    "get_image_caption":["prompt"],
                     "ask_user":["whatever you wanna ask or tell"],
                     "wait":[],
                     }
@@ -58,7 +59,7 @@ class LanguageModels:
                     "sequence": ["Sequence of tasks for the robot to execute"],
                     }
 
-        self.save_folder = '/home/nvidia/catkin_ws/src/nav_assistant/scripts/Experiments/Ex3/Images'
+        self.save_folder = '/home/nvidia/catkin_ws/src/nav_assistant/scripts/Experiments/Ex6/Images'
 
     def connection_check(self):
         print("Connected")
@@ -156,14 +157,16 @@ class LanguageModels:
                     "content": f"""
                         You are the brain for a **mobile manipulator robot assistant** that helps users.
                         You need to keep planning and executing tasks based on user queries, robot experiences, and progress.
-                        The robot continuously logs its experiences and you should plan further.
+
                         ---
                         ### Robot Memory
+                        This should be used only to take help to generate parameters for the tasks, and get help contextually on the environment.
                         You have access to the robot's memory.
                         It is a list of relevant logs at a given timestamp. At each timestamp, it has: {self.memory_format}
                         Use this memory {self.filtered_experiences} to reason about the context and generate smarter plans for this robot. 
                         ---
                         ### Robot Logs
+                        This should be used for designing the task sequence, which means generating further plan.
                         You also have access to its live current logs, which is recent robots memory on the task its running.
                         Use this to check task related information to understand the progress and plan further, (if progressed).
                         So, from the logs if it completes a task, it should be moved to next task. 
@@ -172,21 +175,21 @@ class LanguageModels:
                         ### Robot Capabilities
                         The robot can:
                         - Navigate to only these people: **{self.loc_options}**
-                        - Move to a specific position (x,y,z,w,x,y,z) base_position
-
+                        - Move to a specific position (x,y,z,w,x,y,z) base_position, use this if you know the location.
+                            or if you cant see that object clearly, navigating there should help.
                         - Use its manipulator to pick/place small objects and has only options to **{self.arm_options}**. 
                           Its gripper is small and only can carry objects like pens, ball, cup and similar objects of sizes and weight.
                             - to pick it can start_pickup, then, it performs complete_pickup
                             - to pick it can start_dropoff, it performs complete_dropoff
-                        - Robot sees through the camera on it. Capture images and return what you want to know about it
-                        - Communicate with users. You can ask questions, ask for help, tell anything and more.
+                        - Robot sees through the camera on it. Capture images and return info
+                        - Communicate with users. You can ask questions, ask for help, tell anything and more, ONLY IF NECESSARY
                         - Wait/idle stopping everything that you are doing
                         ---
                         ### Your Objective
                         Given a **user query**, **current progress**, and **Memory** your job is to:
-                        1. Understand the user's intent and task progress, **if any**.
+                        1. Understand the user's intent and task progress.
                         2. Review the robot's memory to inform your response.
-                        3. Goal is to understand user query and plan as required.
+                        3. Goal is to understand user query and plan further for next steps based on its progress.
                             if robot needs to move, Generate a descriptive plan based on what user needs robot to do, and what progress robot has completed using its progress.
                         4. Remember that if you can answer user input just from the the info you have, you can just answer it without any robot action. 
                             You should only move and utilize functions when its needed.
@@ -218,6 +221,8 @@ class LanguageModels:
                     You are generating a sequence of tasks for the mobile manipulator robot should perform.
                     An assistant has generated a plan that robot should further perform for the robot to follow based on how much it progressed, which is shown here: {self.recent_experiences}
                     Your job is to generate the task sequence with appropriate parameters, that robot should futher perform which should be in {self.robots_actions}.
+                    If its running, means same task should run untill it completes. If a task is shown completed or succeeded, it means the plan should be generated to perform from next task.
+                    Once the task is completed, it means it shouldnt be shown in the plan.
                     Make sure to define the parameters required for each task. You are allowed to directly use the base_position and arm_position from the robot's status in the previous experience if you plan to navigate to that specific location.
                     Respond with a JSON format only.
                     """
@@ -278,14 +283,14 @@ class LanguageModels:
             messages=[{
                 "role": "user",
                 "content":  f"""
-                            Extract all relevant and related keywords from the following user query.
+                            Extract all relevant and related **one word** keywords from the following user query.
                             These keywords will be used to search robot experiences that include image captions, tasks, task statuses,
-                            The goal is to retrieve all experiences that are possibly relevant to the user query's intent. Extract keywords that include task-related terms, as well as related synonyms,
+                            The goal is to retrieve all experiences that are relevant to the user query. Extract keywords that include context, object rekated terms
                             Be exhaustive to ensure broad matching.\n
                             User query: '{user_query}'\n\n
                             Provide only a comma-separated list of keywords, without any explanation.
-                            But make sure you dont generate dublicate and overly common words. Need to keep number of keywords to a minimum in range of 10 - 20.
-                            Return them in the order of priority, less common and important keywords first.
+                            Need to keep number of keywords to a minimum in range of 10 - 20.
+                            Return them in the order of priority, important keywords first.
                             """
             }],
             temperature=0.5

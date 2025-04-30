@@ -115,6 +115,7 @@ class HighLevelInference:
         # print(f"\n{step1_response.plan}")
         print(f"\nReason: \n{step1_response.reason}\n")
         # Step 2 Response
+        self.llm.get_recent_20_experiences("memory_files/robot_logs.jsonl", "memory_files/recent_experiences.jsonl", newtask_time=self.task_start_time)
         step2_response = self.llm.get_response_sequence(plan=step1_response.plan, reason=step1_response.reason)
         data = json.loads(step2_response)
         output_lines = []
