@@ -34,13 +34,27 @@ class LanguageModels:
 
         # dict contaning functions and things it needs to execute
         self.robots_actions = {
-                    "navigate_to_person":[f"one person_name from {self.loc_options} only"],
-                    "navigate_to_position":["x","y","z","w1","w2","w3","w4"],
-                    "navigate_to_object": ["Go to object that robot can currently see"],
-                    "manipulate":[f"one function_name from {self.arm_options} only"],
-                    "get_image_caption":["prompt"],
-                    "ask_user":["whatever you wanna ask or tell"],
-                    "wait":[],
+                    "navigate_to_person":[f"one person_name from {self.loc_options} only", 
+                                          "WHEN TO USE: When you are clear that the robot should go to this person", 
+                                          "HOW IT WORKS: Robot has pre-defined locations of these persons, and the robot directly navigates there"],
+                    "navigate_to_position":["x","y","z","w1","w2","w3","w4", 
+                                            "WHEN TO USE: When its clear from memory that the object or whatever robot is looking for, can be seen or found here", 
+                                            "HOW IT WORKS: These coordinates are direcly gicen to the move_base and robot navigates there"],
+                    "navigate_to_object": ["Go to object that robot can currently see", 
+                                           "WHEN TO USE: When you have arrived at a point from where object is visible, but you need to move close to it", 
+                                           "HOW IT WORKS:  Robot identifies the object from it camera first, and moves to that object untill it reaches a threshold distance"],
+                    "manipulate":[f"one function_name from {self.arm_options} only", 
+                                  "WHEN TO USE: When you have to pickup or dropoff something, and this small arm and gripper should be able to hold it ", 
+                                  "HOW IT WORKS: Gripper reaches out to the object in its workspace and grips it, then places of again when requested"],
+                    "get_image_caption":["prompt", 
+                                         "WHEN TO USE: When there is something that you want to know from the current camera image", 
+                                         "HOW IT WORKS: The Image along with the prompt goes to VLM and returns response accordingly"],
+                    "ask_user":["whatever you wanna ask or tell", 
+                                "WHEN TO USE: When you need to ask/tell something or need help doing something for you. Ask only when needed", 
+                                "HOW IT WORKS: This question will be displayed to user, and the user enters the response in return"],
+                    "wait":["No parameter",
+                            "WHEN TO USE: When robot has to stop everything and just wait",
+                            "HOW IT WORKS: All current running tasks are interrupted and stopped"],
                     }
     
         self.memory_format = {
@@ -169,7 +183,7 @@ class LanguageModels:
                         This should be used for designing the task sequence, which means generating further plan.
                         You also have access to its live current logs, which is recent robots memory on the task its running.
                         Use this to check task related information to understand the progress and plan further, (if progressed).
-                        So, from the logs if it completes a task, it should be moved to next task. 
+                        So, from the logs if it completes a task, it should be moved to next task, **only use it to check task_status**. 
                         Here are current logs {self.recent_experiences} in format {self.memory_format}
                         ---
                         ### Robot Capabilities

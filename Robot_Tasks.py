@@ -220,6 +220,7 @@ class RobotTasks:
 
     def get_image_caption(self, data):
         # self.task_status_pub.publish("running")
+        assert self.image, "image is missing"
         response = self.llm.get_vlm_feedback(task="caption_2", rs_image=self.image, question=data)
         self.task_info_pub.publish(response)
         self.task_status_pub.publish("completed")
@@ -290,57 +291,57 @@ if __name__ == "__main__":
     # assert coco.sequence != "", "No sequence received"
     print(f"Sequence: {coco.sequence}")
 
-    # while not rospy.is_shutdown():
-    #     if coco.sequence != "":
-    #         coco.active_server = ""
-    #         # Parse the JSON string
-    #         seq = json.loads(coco.sequence.data)
-    #         # Loop through the list of steps inside the "steps" key
-    #         # for step in seq["steps"]:
-    #         step = seq["steps"][0]
+    while not rospy.is_shutdown():
+        if coco.sequence != "":
+            coco.active_server = ""
+            # Parse the JSON string
+            seq = json.loads(coco.sequence.data)
+            # Loop through the list of steps inside the "steps" key
+            # for step in seq["steps"]:
+            step = seq["steps"][0]
 
-    #         # try:
-    #         #     if current_task == step["task"] and current_param == step["parameter"] and coco.task_status == "completed":
-    #         #         step = seq["steps"][1]
-    #         # except:
-    #         #     pass
-    #         # coco.task_info_pub.publish(" ")
-    #         print(step)
-    #         if step["task"] in coco.possible_tasks:
-    #             coco.subtask_pub.publish(step["task"])
-    #             coco.parameter_pub.publish(step["parameter"])
+            # try:
+            #     if current_task == step["task"] and current_param == step["parameter"] and coco.task_status == "completed":
+            #         step = seq["steps"][1]
+            # except:
+            #     pass
+            # coco.task_info_pub.publish(" ")
+            print(step)
+            if step["task"] in coco.possible_tasks:
+                coco.subtask_pub.publish(step["task"])
+                coco.parameter_pub.publish(step["parameter"])
                 
-    #             getattr(coco, step["task"])(step["parameter"])  # Call the method dynamically
+                getattr(coco, step["task"])(step["parameter"])  # Call the method dynamically
                 
-    #             if coco.active_server == "movebase":
-    #                 coco.task_info_pub.publish(coco.tb_feedback)
-    #                 if coco.tb_status == 3:
-    #                     coco.task_status_pub.publish("completed")
-    #                 else:
-    #                     coco.task_status_pub.publish("running")
+                if coco.active_server == "movebase":
+                    coco.task_info_pub.publish(coco.tb_feedback)
+                    if coco.tb_status == 3:
+                        coco.task_status_pub.publish("completed")
+                    else:
+                        coco.task_status_pub.publish("running")
 
-    #             elif coco.active_server == "arm":
-    #                 coco.task_info_pub.publish(" ")
-    #             #     if coco.arm_status == 3:
-    #             #         coco.task_status_pub.publish("completed")
-    #             #     else:
-    #             #         coco.task_status_pub.publish("running")
+                elif coco.active_server == "arm":
+                    coco.task_info_pub.publish(" ")
+                #     if coco.arm_status == 3:
+                #         coco.task_status_pub.publish("completed")
+                #     else:
+                #         coco.task_status_pub.publish("running")
 
-    #             # current_task = step["task"]
-    #             # current_param = step["parameter"]
+                # current_task = step["task"]
+                # current_param = step["parameter"]
 
                 
 
-    #         else:
-    #             print(f"Unknown task: {step['task']}")
-    #             coco.user_input_pub.publish(f"Unknown task: {step['task']}")
-    #     time.sleep(1)
+            else:
+                print(f"Unknown task: {step['task']}")
+                coco.user_input_pub.publish(f"Unknown task: {step['task']}")
+        time.sleep(1)
 
     # coco.wait()
     # coco.navigate_to_person('zahir')
     # coco.navigate_to_position('-2.8977617696865288, 6.7348915347955565, 0.0, 0.0, 0.0, 0.5825486289046017, 0.8127958507284401')
     # coco.navigate_to_position('6.836892185164943, 5.983559917708442, 0.0, 0.0, 0.0, 0.12264594311087945, 0.9924504887592343')
-    coco.navigate_to_position('0.9326660557767211, 5.122951238483508, 0.0, 0.0, 0.0, -0.3648284331509071, 0.9310747630371334')
+    # coco.navigate_to_position('0.9326660557767211, 5.122951238483508, 0.0, 0.0, 0.0, -0.3648284331509071, 0.9310747630371334')
     # coco.navigate_to_position('-2.8, 6.3, 0.0, 0.0, 0.0, 0.5, 0.8')
 
         # coco.navigate_to_object(["bowl"])
