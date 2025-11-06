@@ -2434,3 +2434,19 @@
         "task_status": "running"
     }
 }
+
+{
+    "timestamp": "2025-04-23 19:25:11", 
+    "type": "status", 
+    "robot": 
+            {"position": 
+                        {"base_position": "[6.836892185164943, 5.983559917708442, 0.0, 0.0, 0.0, 0.12264594311087945, 0.9924504887592343]", 
+                          "arm_position": "['--', '--', '--', '--', '--', '--', '--']"}}, 
+    "camera_observation": "A room with a metal shelving unit on the right, containing various items such as jars, boxes, and a toy vehicle. 
+                           A white door with a handle is partially seen on the left. Cardboard boxes are on the floor near the left side. 
+                           The environment appears to be an office or storage area. The robot could potentially organize or retrieve objects from the shelves.", 
+    "task_progress": 
+            {"task_name": "--", 
+             "parameter": "--", 
+             "task_status": "--"}}
+
