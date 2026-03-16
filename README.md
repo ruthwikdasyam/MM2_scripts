@@ -14,7 +14,7 @@ The system is organized as a set of ROS nodes that communicate over standard top
 
 - **`memory.py`** — Memory/logging node: subscribes to 18 ROS topics and logs robot state approximately every 3 seconds. Each log entry captures base position (AMCL), arm state, a VLM-generated camera caption, and current task progress. LLM calls (user input, plan, reasoning, sequence) are logged separately. All data is appended to `memory_files/robot_logs.jsonl`.
 
-- **`Robot_Tasks.py`** — Task executor: subscribes to `/highlevel_response`, parses the JSON task sequence, and dispatches each step to real ROS actions — `move_base` for navigation, GELLO arm controller for manipulation, ObjectNav action server for object-based navigation, and VLM queries for image captions.
+- **`robot_tasks.py`** — Task executor: subscribes to `/highlevel_response`, parses the JSON task sequence, and dispatches each step to real ROS actions — `move_base` for navigation, GELLO arm controller for manipulation, ObjectNav action server for object-based navigation, and VLM queries for image captions.
 
 - **`user_input.py`** — Human-in-the-loop interface: publishes user commands to `/user_input` and displays robot questions that arrive on `/askuser`.
 
@@ -32,7 +32,7 @@ The system is organized as a set of ROS nodes that communicate over standard top
 
 ## Robot Capabilities
 
-Defined in `language.py` and executed by `Robot_Tasks.py`:
+Defined in `language.py` and executed by `robot_tasks.py`:
 
 - **`navigate_to_person`** — Navigate to a known person's pre-saved location. Options: `ruthwik`, `zahir`, `amisha`, `kasra`.
 - **`navigate_to_position`** — Navigate to an explicit map pose `(x, y, z, qx, qy, qz, qw)` taken from memory or coordinates.
@@ -85,21 +85,21 @@ Launch each node in a separate terminal (with ROS sourced):
 
 ```bash
 # Memory logger
-python memory.py
+python src/memory.py
 
 # High-level LLM planner
-python high_level.py
+python src/high_level.py
 
 # Task executor
-python Robot_Tasks.py
+python src/robot_tasks.py
 
 # User input interface
-python user_input.py
+python src/user_input.py
 ```
 
 For keyboard teleoperation of the base:
 ```bash
-python teleop.py
+python scripts/teleop.py
 ```
 
 ---
@@ -108,29 +108,35 @@ python teleop.py
 
 ```
 MM2_scripts/
-├── high_level.py           # LLM inference node (Step 1 + Step 2 planning)
-├── language.py             # OpenAI/VLM interface, memory retrieval
-├── memory.py               # ROS logging node -> memory_files/robot_logs.jsonl
-├── Robot_Tasks.py          # Task dispatcher (navigation, arm, vision)
-├── user_input.py           # Operator I/O interface
-├── teleop.py               # TurtleBot keyboard teleoperation
-├── gotopoint.py            # Navigation utility / arm test
-├── arm_control.py          # Low-level arm control utility
-├── config.py               # Centralized config (paths, models, defaults)
-├── camera_control_topic.py # Camera topic publisher
-├── camera_test_realsense.py# RealSense camera test
-├── marylanday.py           # Maryland Day demo script
+├── src/                        # Core robot nodes
+│   ├── high_level.py           # LLM inference node (Step 1 + Step 2 planning)
+│   ├── language.py             # OpenAI/VLM interface, memory retrieval
+│   ├── memory.py               # ROS logging node -> memory_files/robot_logs.jsonl
+│   ├── robot_tasks.py          # Task dispatcher (navigation, arm, vision)
+│   ├── user_input.py           # Operator I/O interface
+│   └── config.py               # Centralized config (paths, models, defaults)
+├── scripts/                    # Utilities and one-off scripts
+│   ├── teleop.py               # TurtleBot keyboard teleoperation
+│   ├── gotopoint.py            # Navigation utility / arm test
+│   ├── arm_control.py          # Low-level arm control utility
+│   ├── camera_control_topic.py # Camera topic publisher
+│   ├── camera_test.py          # Camera test script
+│   ├── camera_test_realsense.py# RealSense camera test
+│   ├── marylanday.py           # Maryland Day demo script
+│   └── test_openai.py          # OpenAI API test script
+├── docs/
+│   └── Notes.md                # Development notes
 ├── LCM/
-│   ├── pub.py              # LCM pose publisher example
-│   ├── sub.py              # LCM pose subscriber example
+│   ├── pub.py                  # LCM pose publisher example
+│   ├── sub.py                  # LCM pose subscriber example
 │   └── exlcm/
 │       ├── __init__.py
-│       ├── pose_t.lcm      # LCM struct definition
-│       └── pose_t.py       # Auto-generated Python LCM type
+│       ├── pose_t.lcm          # LCM struct definition
+│       └── pose_t.py           # Auto-generated Python LCM type
 ├── Experiments/
-│   ├── Ex1/ ... Ex6/       # Timestamped experiment logs + images
+│   ├── Ex1/ ... Ex6/           # Timestamped experiment logs + images
 ├── memory_files/
-│   ├── robot_logs.jsonl    # Live robot state + LLM logs
+│   ├── robot_logs.jsonl        # Live robot state + LLM logs
 │   ├── filtered_experiences.jsonl
 │   └── recent_experiences.jsonl
 └── tests/

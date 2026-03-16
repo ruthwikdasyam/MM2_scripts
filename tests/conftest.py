@@ -11,6 +11,9 @@ import sys
 import json
 import tempfile
 import os
+
+# Add src/ to path so tests can import production modules by flat name
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 import base64
 import struct
 from unittest.mock import MagicMock, patch

@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+import os
+import sys
+sys.path.insert(0, os.path.dirname(__file__))
 import rospy
 from std_msgs.msg import String, Int32MultiArray
 from nav_msgs.msg import Odometry

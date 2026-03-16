@@ -17,7 +17,7 @@ from unittest.mock import MagicMock, patch
 
 def _get_robot_tasks_class():
     """Import RobotTasks without instantiating it (avoids rospy.init_node)."""
-    import Robot_Tasks
+    import robot_tasks as Robot_Tasks
     return Robot_Tasks.RobotTasks
 
 
@@ -40,7 +40,7 @@ def test_possible_tasks_contains_all_7_types():
     """possible_tasks must list all 7 task type strings without instantiating."""
     # We inspect the value set in __init__ by examining the source rather than
     # constructing the class (which would call rospy.init_node and open files).
-    import Robot_Tasks as rt_mod
+    import robot_tasks as rt_mod
     import ast
     import inspect
 
