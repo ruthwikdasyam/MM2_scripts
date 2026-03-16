@@ -1,12 +1,15 @@
+import os
+import sys
+sys.path.insert(0, os.path.dirname(__file__))
 import rospy
-import yaml 
-import time 
+import yaml
+import time
 import json
 from dataclasses import dataclass, field
 from actionlib_msgs.msg import GoalStatusArray
 from geometry_msgs.msg import Pose, Point, Quaternion, PoseWithCovarianceStamped, PoseStamped
 from nav_msgs.msg import Odometry
-from mobilegello.gello_controller import GELLOcontroller 
+from mobilegello.gello_controller import GELLOcontroller
 from language import LanguageModels
 from actionlib_msgs.msg import GoalID
 from std_msgs.msg import String, Int32MultiArray
@@ -14,6 +17,7 @@ from sensor_msgs.msg import CompressedImage
 import numpy as np
 import cv2
 import ast
+from config import LOCATION_MAP_PATH, POSES_DIR
 
 import rospy
 import tf2_ros
@@ -64,9 +68,9 @@ class RobotTasks:
 
         # Accessing saved locations
         self.pose_dict = {}        
-        location_map = json.load(open("/home/nvidia/catkin_ws/src/nav_assistant/jsons/location_pose_map.json"))        
-        for key, fl in location_map.items():            
-            self.pose_dict[key] = self.read_pose_from_file(f"/home/nvidia/catkin_ws/src/nav_assistant/poses/{fl}.txt")        
+        location_map = json.load(open(LOCATION_MAP_PATH))
+        for key, fl in location_map.items():
+            self.pose_dict[key] = self.read_pose_from_file(os.path.join(POSES_DIR, f"{fl}.txt"))        
         self.loc_options = ', '.join(list(location_map.keys()))
         self.arm_options = ["start_pickup","complete_pickup","start_dropoff","complete_dropoff"]
         

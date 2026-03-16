@@ -1,6 +1,9 @@
+import os
+import sys
+sys.path.insert(0, os.path.dirname(__file__))
 import rospy
-import yaml 
-import time 
+import yaml
+import time
 import json
 from dataclasses import dataclass, field
 from actionlib_msgs.msg import GoalStatusArray
@@ -13,6 +16,7 @@ from std_msgs.msg import String, Int32MultiArray, Float64
 from sensor_msgs.msg import CompressedImage
 import numpy as np
 import cv2
+from config import LOCATION_MAP_PATH, POSES_DIR, ROBOT_LOGS_FILE, FILTERED_EXPERIENCES_FILE, RECENT_EXPERIENCES_FILE
 
 
 class HighLevelInference:
@@ -21,9 +25,9 @@ class HighLevelInference:
 
         # Load location map
         self.pose_dict = {}        
-        location_map = json.load(open("/home/nvidia/catkin_ws/src/nav_assistant/jsons/location_pose_map.json"))        
-        for key, fl in location_map.items():            
-            self.pose_dict[key] = self.read_pose_from_file(f"/home/nvidia/catkin_ws/src/nav_assistant/poses/{fl}.txt")        
+        location_map = json.load(open(LOCATION_MAP_PATH))
+        for key, fl in location_map.items():
+            self.pose_dict[key] = self.read_pose_from_file(os.path.join(POSES_DIR, f"{fl}.txt"))        
         self.loc_options = ', '.join(list(location_map.keys()))
         self.arm_options = ["pickup", "dropoff"]
 
@@ -107,15 +111,15 @@ class HighLevelInference:
         keywords = self.llm.generate_keywords(query)
         print(keywords)
         # Filter Experiences
-        self.llm.filter_experiences("memory_files/robot_logs.jsonl", "memory_files/filtered_experiences.jsonl", keywords.split(","))
-        self.llm.get_recent_20_experiences("memory_files/robot_logs.jsonl", "memory_files/recent_experiences.jsonl", newtask_time=self.task_start_time)
+        self.llm.filter_experiences(ROBOT_LOGS_FILE, FILTERED_EXPERIENCES_FILE, keywords.split(","))
+        self.llm.get_recent_20_experiences(ROBOT_LOGS_FILE, RECENT_EXPERIENCES_FILE, newtask_time=self.task_start_time)
         # """
         # Step 1 Response
         step1_response = self.llm.get_response(user_query=query)
         # print(f"\n{step1_response.plan}")
         print(f"\nReason: \n{step1_response.reason}\n")
         # Step 2 Response
-        self.llm.get_recent_20_experiences("memory_files/robot_logs.jsonl", "memory_files/recent_experiences.jsonl", newtask_time=self.task_start_time)
+        self.llm.get_recent_20_experiences(ROBOT_LOGS_FILE, RECENT_EXPERIENCES_FILE, newtask_time=self.task_start_time)
         step2_response = self.llm.get_response_sequence(plan=step1_response.plan, reason=step1_response.reason)
         data = json.loads(step2_response)
         output_lines = []

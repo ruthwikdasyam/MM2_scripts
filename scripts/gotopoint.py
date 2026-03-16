@@ -1,19 +1,23 @@
+import os
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 import rospy
 import random
 from geometry_msgs.msg import Pose, Point, Quaternion, PoseWithCovarianceStamped, PoseStamped
 import glob
-import yaml 
-import time 
+import yaml
+import time
 import json
 from mobilegello.gello_controller import GELLOcontroller
 import numpy as np
+from config import LOCATION_MAP_PATH, POSES_DIR
 
 
 class RandomGoalSetter:
     def __init__(self):
         rospy.init_node("random_goal_setter", anonymous=True)
 
-        self.location_map = json.load(open("/home/nvidia/catkin_ws/src/nav_assistant/jsons/location_pose_map.json"))
+        self.location_map = json.load(open(LOCATION_MAP_PATH))
 
 
         # print(self.pose_list)
@@ -50,7 +54,7 @@ class RandomGoalSetter:
         selected_location = input(f"Please select a goal from the following locations:\n{loc_options} \n\n")
         rospy.sleep(3)
         
-        selected_pose = self.read_pose_from_file( "/home/nvidia/catkin_ws/src/nav_assistant/poses/" + self.location_map[selected_location] + "_pose.txt")
+        selected_pose = self.read_pose_from_file(os.path.join(POSES_DIR, self.location_map[selected_location] + "_pose.txt"))
 
         goal = PoseStamped()
         goal.header = selected_pose.header

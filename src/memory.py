@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 
+import os
+import sys
+sys.path.insert(0, os.path.dirname(__file__))
 import rospy
 from std_msgs.msg import String, Int32MultiArray
 from nav_msgs.msg import Odometry
@@ -13,6 +16,7 @@ import cv2
 import numpy as np
 from geometry_msgs.msg import PoseWithCovarianceStamped
 import ast
+from config import ROBOT_LOGS_FILE
 
 class MemoryNode:
 
@@ -200,8 +204,7 @@ class MemoryNode:
 
 
     def save_logs(self, log):
-        # log_file = "memory_files/robot_logs.jsonl"  # JSONL (JSON Lines) format for continuous logging
-        log_file = "memory_files/robot_logs.jsonl"  # JSONL (JSON Lines) format for continuous logging
+        log_file = ROBOT_LOGS_FILE
         try:
             json_line = json.dumps(log) 
             with open(log_file, "a") as file:
