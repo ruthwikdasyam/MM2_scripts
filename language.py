@@ -11,6 +11,7 @@ from typing import List, Dict, Union
 from datetime import datetime, timedelta
 import time
 import os
+from config import EXPERIMENT_SAVE_DIR, LLM_MODEL, VLM_MODEL, DEFAULT_LOC_OPTIONS, DEFAULT_ARM_OPTIONS
 
 client = OpenAI()
 
@@ -26,7 +27,11 @@ class GripperAction(BaseModel):
 
 
 class LanguageModels:
-    def __init__(self, loc_options=['ruthwik', 'zahir', 'amisha', 'kasra'], arm_options=["start_pickup","complete_pickup","start_dropoff","complete_dropoff"]):
+    def __init__(self, loc_options=None, arm_options=None):
+        if loc_options is None:
+            loc_options = DEFAULT_LOC_OPTIONS
+        if arm_options is None:
+            arm_options = DEFAULT_ARM_OPTIONS
         
         self.logs=""
         self.loc_options = loc_options
@@ -73,7 +78,7 @@ class LanguageModels:
                     "sequence": ["Sequence of tasks for the robot to execute"],
                     }
 
-        self.save_folder = '/home/nvidia/catkin_ws/src/nav_assistant/scripts/Experiments/Ex6/Images'
+        self.save_folder = EXPERIMENT_SAVE_DIR
 
     def connection_check(self):
         print("Connected")
@@ -136,7 +141,7 @@ class LanguageModels:
             """
 
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model=VLM_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": [
@@ -164,7 +169,7 @@ class LanguageModels:
 
         # **Step 1: Understanding the user query**
         reason_response = client.beta.chat.completions.parse(
-            model="gpt-4o",
+            model=LLM_MODEL,
             messages=[
                 {
                     "role": "system",
@@ -227,7 +232,7 @@ class LanguageModels:
     def get_response_sequence(self, plan, reason):
         # **Step 1: Understanding the user query**
         sequence_response = client.chat.completions.create(
-            model="gpt-4o",
+            model=LLM_MODEL,
             messages=[
                 {
                     "role": "system",
@@ -293,7 +298,7 @@ class LanguageModels:
 
         # Using the new API method for text generation
         response = client.chat.completions.create(
-            model="gpt-4o",
+            model=LLM_MODEL,
             messages=[{
                 "role": "user",
                 "content":  f"""
